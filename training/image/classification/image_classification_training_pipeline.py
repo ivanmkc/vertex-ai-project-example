@@ -3,7 +3,16 @@ from google_cloud_pipeline_components import aiplatform as gcc_aip
 from google.cloud import aiplatform
 import kfp
 from kfp.v2 import dsl
-from kfp.v2.dsl import ClassificationMetrics, Input, Metrics, Model, Output, component
+from kfp.dsl import importer_node
+from kfp.v2.dsl import (
+    ClassificationMetrics,
+    Dataset,
+    Input,
+    Metrics,
+    Model,
+    Output,
+    component,
+)
 
 from typing import Any, Callable, NamedTuple
 
@@ -137,16 +146,13 @@ class ImageClassificationTrainingPipeline(training_pipeline.TrainingPipeline):
     def create_pipeline(self, project: str, pipeline_root: str) -> Callable[..., Any]:
         @kfp.dsl.pipeline(name=self.pipeline_name, pipeline_root=pipeline_root)
         def pipeline(
-            gcs_source: str = "gs://cloud-samples-data/vision/automl_classification/flowers/all_data_v2.csv",
-            # gcp_region: str = "us-central1",
             api_endpoint: str = "us-central1-aiplatform.googleapis.com",
             thresholds_dict_str: str = '{"auPrc": 0.95}',
         ):
-            ds_op = gcc_aip.ImageDatasetCreateOp(
-                display_name="flowers",
-                gcs_source=gcs_source,
-                project=project,
-                import_schema_uri=aiplatform.schema.dataset.ioformat.image.single_label_classification,
+            importer = importer_node.importer(
+                artifact_uri=self.annotation_dataset_uri,
+                artifact_class=Dataset,
+                reimport=False,
             )
 
             training_op = gcc_aip.AutoMLImageTrainingJobRunOp(
@@ -155,7 +161,7 @@ class ImageClassificationTrainingPipeline(training_pipeline.TrainingPipeline):
                 prediction_type="classification",
                 model_type="CLOUD",
                 base_model=None,
-                dataset=ds_op.outputs["dataset"],
+                dataset=importer.output,
                 model_display_name="iris-classification-model-mbsdk",
                 training_fraction_split=0.6,
                 validation_fraction_split=0.2,
@@ -185,9 +191,9 @@ class ImageClassificationTrainingPipeline(training_pipeline.TrainingPipeline):
 
 class ImageClassificationTrainingPipelineFlowers(ImageClassificationTrainingPipeline):
     id = "Image Classification Flowers"
-    annotation_dataset_id: str = ""
+    annotation_dataset_uri: str = "aiplatform://v1/projects/1012616486416/locations/us-central1/datasets/7601275726536376320"
 
 
 class ImageClassificationTrainingPipelineFruit(ImageClassificationTrainingPipeline):
     id = "Image Classification Fruit"
-    annotation_dataset_id: str = ""
+    annotation_dataset_uri: str = "aiplatform://v1/projects/1012616486416/locations/us-central1/datasets/7601275726536376320"

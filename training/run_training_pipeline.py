@@ -39,11 +39,11 @@ def retrain_for_changed_datasets(project_id: str, region: str):
     # Get all pipelines for changed datasets
     all_pipelines: List[training_pipeline.TrainingPipeline] = []  # TODO
 
-    changed_dataset_ids = set([changed_datasets.id for dataset in changed_datasets])
+    changed_dataset_uris = set([changed_datasets.uri for dataset in changed_datasets])
 
     # Run all pipelines that use a modified dataseta
     for pipeline in all_pipelines:
-        if pipeline.annotation_dataset_id in changed_dataset_ids:
+        if pipeline.annotation_dataset_uri in changed_dataset_uris:
             run_training_pipeline(
                 project_id=project_id,
                 region=region,
