@@ -14,10 +14,14 @@ class TrainingPipeline(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def create_pipeline(
-        self, project_id: str, pipeline_root: str
-    ) -> Callable[..., Any]:
+    def create_pipeline(self, project: str, pipeline_root: str) -> Callable[..., Any]:
         pass
+
+    @property
+    def training_frequency(self) -> str:
+        # Frequency in unix-cron format (https://cloud.google.com/scheduler/docs/configuring/cron-job-schedules)
+        # Default is: Every Monday at 09:00
+        return "0 9 * * 1"
 
     @property
     def pipeline_name(self) -> str:

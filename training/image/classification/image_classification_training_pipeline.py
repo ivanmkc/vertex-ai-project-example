@@ -15,9 +15,9 @@ class ImageClassificationTrainingPipeline(training_pipeline.TrainingPipeline):
         packages_to_install=["google-cloud-aiplatform"],
     )
     def classify_model_eval_metrics(
-        # project: str,
-        # location: str,  # "us-central1",
-        # api_endpoint: str,  # "us-central1-aiplatform.googleapis.com",
+        project_id: str,
+        # location: str,
+        api_endpoint: str,  # "us-central1-aiplatform.googleapis.com",
         thresholds_dict_str: str,
         model: Input[Model],
         metrics: Output[Metrics],
@@ -108,15 +108,15 @@ class ImageClassificationTrainingPipeline(training_pipeline.TrainingPipeline):
             # metrics.metadata["model_type"] = "AutoML Image classification"
 
         logging.getLogger().setLevel(logging.INFO)
-        # aiplatform.init(project=project)
-        aiplatform.init()
+        aiplatform.init(project=project_id)
         # extract the model resource name from the input Model Artifact
         model_resource_path = model.uri.replace("aiplatform://v1/", "")
         logging.info("model path: %s", model_resource_path)
 
-        # client_options = {"api_endpoint": api_endpoint}
+        client_options = {"api_endpoint": api_endpoint}
         # Initialize client that will be used to create and send requests.
-        client = aiplatform.gapic.ModelServiceClient()
+        client = aiplatform.gapic.ModelServiceClient(client_options=client_options)
+
         eval_name, metrics_list, metrics_str_list = get_eval_info(
             client, model_resource_path
         )
@@ -134,24 +134,23 @@ class ImageClassificationTrainingPipeline(training_pipeline.TrainingPipeline):
 
         return (dep_decision,)
 
-    def create_pipeline(
-        self, project_id: str, pipeline_root: str
-    ) -> Callable[..., Any]:
+    def create_pipeline(self, project: str, pipeline_root: str) -> Callable[..., Any]:
         @kfp.dsl.pipeline(name=self.pipeline_name, pipeline_root=pipeline_root)
         def pipeline(
             gcs_source: str = "gs://cloud-samples-data/vision/automl_classification/flowers/all_data_v2.csv",
             # gcp_region: str = "us-central1",
-            # api_endpoint: str = "us-central1-aiplatform.googleapis.com",
+            api_endpoint: str = "us-central1-aiplatform.googleapis.com",
             thresholds_dict_str: str = '{"auPrc": 0.95}',
         ):
             ds_op = gcc_aip.ImageDatasetCreateOp(
                 display_name="flowers",
                 gcs_source=gcs_source,
-                project=project_id,
+                project=project,
                 import_schema_uri=aiplatform.schema.dataset.ioformat.image.single_label_classification,
             )
 
             training_op = gcc_aip.AutoMLImageTrainingJobRunOp(
+                project=project,
                 display_name="train-iris-automl-mbsdk-1",
                 prediction_type="classification",
                 model_type="CLOUD",
@@ -163,11 +162,13 @@ class ImageClassificationTrainingPipeline(training_pipeline.TrainingPipeline):
                 test_fraction_split=0.2,
                 budget_milli_node_hours=8000,
             )
+
             model_eval_task = ImageClassificationTrainingPipeline.classify_model_eval_metrics(
+                project_id=project,
                 # gcp_region,
-                # api_endpoint,
-                thresholds_dict_str,
-                training_op.outputs["model"],
+                api_endpoint=api_endpoint,
+                thresholds_dict_str=thresholds_dict_str,
+                model=training_op.outputs["model"],
             )
 
             with dsl.Condition(

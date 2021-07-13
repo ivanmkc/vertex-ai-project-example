@@ -62,7 +62,7 @@ def run_training_pipeline(
     pipeline: training_pipeline.TrainingPipeline,
 ):
     compiler.Compiler().compile(
-        pipeline_func=pipeline.create_pipeline(project_id=project_id, pipeline_root=""),
+        pipeline_func=pipeline.create_pipeline(project=project_id, pipeline_root=""),
         package_path=JOB_SPEC_PATH,
     )
 
