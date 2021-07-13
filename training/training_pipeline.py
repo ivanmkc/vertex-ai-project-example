@@ -10,7 +10,7 @@ class TrainingPipeline(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def annotation_dataset_id(self) -> str:
+    def annotation_dataset_uri(self) -> str:
         pass
 
     @abc.abstractmethod

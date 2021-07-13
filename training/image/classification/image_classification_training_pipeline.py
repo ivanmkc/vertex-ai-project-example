@@ -143,6 +143,21 @@ class ImageClassificationTrainingPipeline(training_pipeline.TrainingPipeline):
 
         return (dep_decision,)
 
+    def create_training_op(self, project: str, dataset: Dataset) -> Callable:
+        return gcc_aip.AutoMLImageTrainingJobRunOp(
+            project=project,
+            display_name="train-iris-automl-mbsdk-1",
+            prediction_type="classification",
+            model_type="CLOUD",
+            base_model=None,
+            dataset=dataset,
+            model_display_name="iris-classification-model-mbsdk",
+            training_fraction_split=0.6,
+            validation_fraction_split=0.2,
+            test_fraction_split=0.2,
+            budget_milli_node_hours=8000,
+        )
+
     def create_pipeline(self, project: str, pipeline_root: str) -> Callable[..., Any]:
         @kfp.dsl.pipeline(name=self.pipeline_name, pipeline_root=pipeline_root)
         def pipeline(
@@ -155,18 +170,8 @@ class ImageClassificationTrainingPipeline(training_pipeline.TrainingPipeline):
                 reimport=False,
             )
 
-            training_op = gcc_aip.AutoMLImageTrainingJobRunOp(
-                project=project,
-                display_name="train-iris-automl-mbsdk-1",
-                prediction_type="classification",
-                model_type="CLOUD",
-                base_model=None,
-                dataset=importer.output,
-                model_display_name="iris-classification-model-mbsdk",
-                training_fraction_split=0.6,
-                validation_fraction_split=0.2,
-                test_fraction_split=0.2,
-                budget_milli_node_hours=8000,
+            training_op = self.create_training_op(
+                project=project, dataset=importer.output
             )
 
             model_eval_task = ImageClassificationTrainingPipeline.classify_model_eval_metrics(
