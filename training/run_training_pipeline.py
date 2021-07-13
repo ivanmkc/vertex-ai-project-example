@@ -1,13 +1,10 @@
 from image.classification.image_classification_training_pipeline import (
-    ImageClassificationTrainingPipelineFlowers,
+    ImageClassificationTrainingPipelineAutoML,
 )
 from google.cloud import aiplatform
 import training_pipeline
 from kfp.v2 import compiler  # noqa: F811
 from kfp.v2.google.client import AIPlatformClient  # noqa: F811
-from image.classification.image_classification_training_pipeline import (
-    ImageClassificationTrainingPipelineFlowers,
-)
 from typing import List, Set
 
 
@@ -85,5 +82,5 @@ run_training_pipeline(
     project_id="python-docs-samples-tests",
     region="us-central1",
     pipeline_root=pipeline_root,
-    pipeline=ImageClassificationTrainingPipelineFlowers(),
+    pipeline=ImageClassificationTrainingPipelineAutoML(),
 )
