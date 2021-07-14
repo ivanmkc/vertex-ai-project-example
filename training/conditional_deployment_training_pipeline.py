@@ -168,7 +168,7 @@ class ConditionalDeploymentTrainingPipeline(training_pipeline.TrainingPipeline):
             )
 
             training_op = self.create_training_op(
-                project=project, dataset=importer.output
+                project=project, pipeline_root=pipeline_root, dataset=importer.output
             )
 
             model_eval_task = ConditionalDeploymentTrainingPipeline.classify_model_eval_metrics(

@@ -17,6 +17,7 @@ class TrainingPipeline(abc.ABC):
     def create_pipeline(self, project: str, pipeline_root: str) -> Callable[..., Any]:
         pass
 
+    # TODO: This should not be in this class
     @property
     def training_frequency(self) -> str:
         # Frequency in unix-cron format (https://cloud.google.com/scheduler/docs/configuring/cron-job-schedules)

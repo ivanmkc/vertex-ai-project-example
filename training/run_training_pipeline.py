@@ -1,6 +1,10 @@
-from image.classification.image_classification_training_pipeline import (
-    ImageClassificationTrainingPipelineAutoML,
+from image.classification.image_classification_automl_training_pipeline import (
+    ImageClassificationTrainingPipeline,
 )
+from image.classification.image_classification_custom_training_pipeline import (
+    ImageClassificationCustomTrainingPipeline,
+)
+
 from google.cloud import aiplatform
 import training_pipeline
 from kfp.v2 import compiler  # noqa: F811
@@ -59,7 +63,9 @@ def run_training_pipeline(
     pipeline: training_pipeline.TrainingPipeline,
 ):
     compiler.Compiler().compile(
-        pipeline_func=pipeline.create_pipeline(project=project_id, pipeline_root=""),
+        pipeline_func=pipeline.create_pipeline(
+            project=project_id, pipeline_root=pipeline_root
+        ),
         package_path=JOB_SPEC_PATH,
     )
 
@@ -82,5 +88,5 @@ run_training_pipeline(
     project_id="python-docs-samples-tests",
     region="us-central1",
     pipeline_root=pipeline_root,
-    pipeline=ImageClassificationTrainingPipelineAutoML(),
+    pipeline=ImageClassificationCustomTrainingPipeline(),
 )
