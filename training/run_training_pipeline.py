@@ -5,6 +5,10 @@ from image.classification.image_classification_custom_training_pipeline import (
     ImageClassificationCustomTrainingPipeline,
 )
 
+from image.classification.image_classification_custom_python_package_training_pipeline import (
+    ImageClassificationCustomPythonPackageTrainingPipeline,
+)
+
 from google.cloud import aiplatform
 import training_pipeline
 from kfp.v2 import compiler  # noqa: F811
@@ -81,12 +85,12 @@ def run_training_pipeline(
     # print(response)
 
 
-BUCKET_NAME = "gs://ivanmkc/mineral"
+BUCKET_NAME = "gs://ivanmkc-mineral/training"
 pipeline_root = "{}/pipeline_root".format(BUCKET_NAME)
 
 run_training_pipeline(
     project_id="python-docs-samples-tests",
     region="us-central1",
     pipeline_root=pipeline_root,
-    pipeline=ImageClassificationCustomTrainingPipeline(),
+    pipeline=ImageClassificationCustomPythonPackageTrainingPipeline(),
 )
