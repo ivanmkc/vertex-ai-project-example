@@ -15,7 +15,7 @@ TRAIN_IMAGE = "gcr.io/cloud-aiplatform/training/{}:latest".format(TRAIN_VERSION)
 DEPLOY_IMAGE = "gcr.io/cloud-aiplatform/prediction/{}:latest".format(DEPLOY_VERSION)
 
 TRAIN_GPU, TRAIN_NGPU = (aip.AcceleratorType.NVIDIA_TESLA_K80, 1)
-DEPLOY_GPU, DEPLOY_NGPU = (aip.AcceleratorType.NVIDIA_TESLA_K80, 1)
+# DEPLOY_GPU, DEPLOY_NGPU = (aip.AcceleratorType.NVIDIA_TESLA_K80, 1)
 
 MACHINE_TYPE = "n1-standard"
 
@@ -25,8 +25,8 @@ TRAIN_COMPUTE = MACHINE_TYPE + "-" + VCPU
 ANNOTATION_SCHEMA_URI = aiplatform.schema.dataset.annotation.image.classification
 
 # Script
-SCRIPT_PATH: str = "training/image/classification/task.py"
-REQUIREMENTS: List[str] = []
+SCRIPT_PATH: str = "training/image/classification/custom_tasks/task.py"
+REQUIREMENTS: List[str] = ["tensorflow_datasets==1.3.0"]
 
 PYTHON_MODULE_NAME = f"{source_utils._TrainingScriptPythonPackager._ROOT_MODULE}.{source_utils._TrainingScriptPythonPackager._TASK_MODULE_NAME}"
 
@@ -40,14 +40,12 @@ class ImageClassificationCustomPythonPackageTrainingPipeline(
     def create_training_op(
         self, project: str, pipeline_root: str, dataset: Dataset
     ) -> Callable:
-        # destination_blob_name = (
-        #     f"custom-training-python-package/{self.pipeline_name}/trainer-0.1.tar.gz"
-        # )
-
+        # Create packager
         python_packager = source_utils._TrainingScriptPythonPackager(
             script_path=SCRIPT_PATH, requirements=REQUIREMENTS
         )
 
+        # Package and upload to GCS
         package_gcs_uri = python_packager.package_and_copy_to_gcs(
             gcs_staging_dir=pipeline_root,
             project=project,

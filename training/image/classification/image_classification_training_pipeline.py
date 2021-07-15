@@ -1,7 +1,7 @@
-from training.conditional_deployment_training_pipeline import (
-    ConditionalDeploymentTrainingPipeline,
+from training.import_and_training_pipeline.py import (
+    ImportAndTrainingPipeline,
 )
 
-
-class ImageClassificationTrainingPipeline(ConditionalDeploymentTrainingPipeline):
-    thresholds_dict = {"auPrc": 0.95}
+# TODO: May remove this layer if not needed
+class ImageClassificationTrainingPipeline(ImportAndTrainingPipeline):
+    pass

@@ -74,6 +74,7 @@ class ConditionalDeploymentTrainingPipeline(training_pipeline.TrainingPipeline):
                 metrics_list.append(metrics)
                 metrics_string_list.append(metrics_str)
 
+            # TODO: This errors out when evaluation is not assigned in the for loop
             return (
                 evaluation.name,
                 metrics_list,
@@ -83,6 +84,8 @@ class ConditionalDeploymentTrainingPipeline(training_pipeline.TrainingPipeline):
         # Use the given metrics threshold(s) to determine whether the model is
         # accurate enough to deploy.
         thresholds_dict = json.loads(thresholds_dict_str)
+
+        # TODO: Throw error if evaluation doesn't contain the values required in thresholds_dict
 
         def classification_thresholds_check(metrics_dict, thresholds_dict):
             for k, v in thresholds_dict.items():

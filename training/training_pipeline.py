@@ -3,6 +3,10 @@ import abc
 
 
 class TrainingPipeline(abc.ABC):
+    """
+        Uses existing managed dataset and builds an arbitrary pipeline
+    """
+
     @property
     @abc.abstractmethod
     def id(self) -> str:  # Must be unique
