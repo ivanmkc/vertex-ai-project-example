@@ -1,14 +1,12 @@
-from training.image.classification.image_classification_training_pipeline import (
-    ImageClassificationManagedDatasetPipeline,
+from training.common.import_training_deploy_pipeline import (
+    ImportTrainingDeployPipeline,
 )
 from google_cloud_pipeline_components import aiplatform as gcc_aip
 from typing import Callable
 from kfp.v2.dsl import component, Dataset, Input, Output, OutputPath, Model
 
 
-class ImageClassificationCustomManagedDatasetPipeline(
-    ImageClassificationManagedDatasetPipeline
-):
+class ImageClassificationCustomManagedDatasetPipeline(ImportTrainingDeployPipeline):
     id = "Image Classification Custom"
     managed_dataset_uri: str = "aiplatform://v1/projects/1012616486416/locations/us-central1/datasets/7601275726536376320"
 

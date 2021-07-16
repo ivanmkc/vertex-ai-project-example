@@ -6,8 +6,8 @@ from typing import Callable
 from kfp.v2.dsl import Dataset
 
 
-class ImageClassificationAutoMLManagedDatasetPipeline(ImportTrainingDeployPipeline):
-    id = "Image Classification AutoML"
+class ImageSegmentationAutoMLManagedDatasetPipeline(ImportTrainingDeployPipeline):
+    id = "Image Segmentation AutoML"
     managed_dataset_uri: str = "aiplatform://v1/projects/1012616486416/locations/us-central1/datasets/7601275726536376320"
     should_deploy = True
 

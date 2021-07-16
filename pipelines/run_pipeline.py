@@ -1,15 +1,15 @@
-from image.classification.image_classification_automl_training_pipeline import (
-    ImageClassificationManagedDatasetPipeline,
+from training.image.classification.image_classification_automl_training_pipeline import (
+    ImageClassificationAutoMLManagedDatasetPipeline,
 )
-from image.classification.image_classification_custom_training_pipeline import (
+from training.image.classification.image_classification_custom_training_pipeline import (
     ImageClassificationCustomManagedDatasetPipeline,
 )
 
-from image.classification.image_classification_custom_python_package_training_pipeline import (
+from training.image.classification.image_classification_custom_python_package_training_pipeline import (
     ImageClassificationCustomPythonPackageManagedDatasetPipeline,
 )
 
-from image.classification.image_classification_automl_training_pipeline import (
+from training.image.classification.image_classification_automl_training_pipeline import (
     ImageClassificationAutoMLManagedDatasetPipeline,
 )
 

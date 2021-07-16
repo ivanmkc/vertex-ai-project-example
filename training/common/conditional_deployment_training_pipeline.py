@@ -2,7 +2,7 @@ from typing import Any, Callable, Dict, NamedTuple
 import abc
 from kfp.dsl import importer_node
 
-from training.managed_dataset_pipeline import ManagedDatasetPipeline
+from training.common.managed_dataset_pipeline import ManagedDatasetPipeline
 from google_cloud_pipeline_components import aiplatform as gcc_aip
 import kfp
 from kfp.v2 import dsl

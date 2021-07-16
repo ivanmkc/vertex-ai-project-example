@@ -1,5 +1,5 @@
-from training.image.classification.image_classification_training_pipeline import (
-    ImageClassificationManagedDatasetPipeline,
+from training.common.import_training_deploy_pipeline import (
+    ImportTrainingDeployPipeline,
 )
 from google_cloud_pipeline_components import aiplatform as gcc_aip
 from typing import Callable, List
@@ -34,7 +34,7 @@ PYTHON_MODULE_NAME = f"{source_utils._TrainingScriptPythonPackager._ROOT_MODULE}
 
 
 class ImageClassificationCustomPythonPackageManagedDatasetPipeline(
-    ImageClassificationManagedDatasetPipeline
+    ImportTrainingDeployPipeline
 ):
     id = "Image Classification Custom Python Package"
     managed_dataset_uri: str = "aiplatform://v1/projects/1012616486416/locations/us-central1/datasets/7601275726536376320"

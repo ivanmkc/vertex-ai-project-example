@@ -1,5 +1,5 @@
 import abc
-from training.pipeline import Pipeline
+from pipelines.pipeline import Pipeline
 
 
 class ManagedDatasetPipeline(Pipeline):

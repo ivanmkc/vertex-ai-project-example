@@ -1,4 +1,4 @@
-from training.import_training_deploy_pipeline import (
+from training.common.import_training_deploy_pipeline import (
     ImportTrainingDeployPipeline,
 )
 

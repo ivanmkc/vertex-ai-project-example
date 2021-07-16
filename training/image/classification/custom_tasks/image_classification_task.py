@@ -21,7 +21,7 @@ def parse_image(filename):
     return image
 
 
-# Scaling CIFAR10 data from (0, 255] to (0., 1.]
+# Scaling image data from (0, 255] to (0., 1.]
 def scale(image, label):
     image = tf.cast(image, tf.float32)
     image /= 255.0
