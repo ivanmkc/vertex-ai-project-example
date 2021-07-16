@@ -1,4 +1,4 @@
-from training.import_and_training_pipeline.py import (
+from training.import_and_training_pipeline import (
     ImportAndTrainingPipeline,
 )
 

@@ -25,8 +25,10 @@ TRAIN_COMPUTE = MACHINE_TYPE + "-" + VCPU
 ANNOTATION_SCHEMA_URI = aiplatform.schema.dataset.annotation.image.classification
 
 # Script
-SCRIPT_PATH: str = "training/image/classification/custom_tasks/task.py"
-REQUIREMENTS: List[str] = ["tensorflow_datasets==1.3.0"]
+SCRIPT_PATH: str = (
+    "training/image/classification/custom_tasks/image_classification_task.py"
+)
+REQUIREMENTS: List[str] = ["tqdm", "tensorflow_datasets==1.3.0"]
 
 PYTHON_MODULE_NAME = f"{source_utils._TrainingScriptPythonPackager._ROOT_MODULE}.{source_utils._TrainingScriptPythonPackager._TASK_MODULE_NAME}"
 
