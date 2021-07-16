@@ -13,6 +13,10 @@ from training.image.classification.image_classification_automl_training_pipeline
     ImageClassificationAutoMLManagedDatasetPipeline,
 )
 
+from training.image.object_detection.object_detection_automl_training_pipeline import (
+    ObjectDetectionAutoMLManagedDatasetPipeline,
+)
+
 from google.cloud import aiplatform
 from pipeline import Pipeline
 from kfp.v2 import compiler  # noqa: F811

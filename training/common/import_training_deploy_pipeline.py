@@ -12,7 +12,7 @@ from kfp.v2.dsl import (
 
 class ImportTrainingDeployPipeline(ManagedDatasetPipeline):
     """
-    Ingests an existing Vertex AI managed dataset and trains an arbitrary AutoML or custom model
+    Import an existing Vertex AI managed dataset and trains an arbitrary AutoML or custom model
     """
 
     should_deploy: bool = False

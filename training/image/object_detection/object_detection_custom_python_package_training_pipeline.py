@@ -21,18 +21,18 @@ MACHINE_TYPE = "n1-standard"
 VCPU = "4"
 TRAIN_COMPUTE = MACHINE_TYPE + "-" + VCPU
 
-ANNOTATION_SCHEMA_URI = aiplatform.schema.dataset.annotation.image.classification
+ANNOTATION_SCHEMA_URI = aiplatform.schema.dataset.annotation.image.bounding_box
 
 
-class ImageClassificationCustomPythonPackageManagedDatasetPipeline(
+class ObjectDetectionCustomPythonPackageManagedDatasetPipeline(
     CustomPythonPackageManagedDatasetPipeline
 ):
-    id = "Image Classification Custom Python Package"
+    id = "Object Detection Custom Python Package"
     managed_dataset_uri: str = "aiplatform://v1/projects/1012616486416/locations/us-central1/datasets/7601275726536376320"
     should_deploy = True
 
     training_script_path = (
-        "training/image/classification/custom_tasks/image_classification_task.py"
+        "training/image/classification/custom_tasks/object_detection_task.py"
     )
     requirements = ["tqdm", "tensorflow_datasets==1.3.0"]
 
