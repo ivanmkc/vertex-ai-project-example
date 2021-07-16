@@ -1,9 +1,8 @@
 from typing import Any, Callable, Dict, NamedTuple
 import abc
-import training_pipeline
 from kfp.dsl import importer_node
 
-import training_pipeline
+from training.managed_dataset_pipeline import ManagedDatasetPipeline
 from google_cloud_pipeline_components import aiplatform as gcc_aip
 import kfp
 from kfp.v2 import dsl
@@ -20,7 +19,7 @@ from kfp.v2.dsl import (
 import json
 
 
-class ConditionalDeploymentTrainingPipeline(training_pipeline.TrainingPipeline):
+class ConditionalDeploymentManagedDatasetPipeline(ManagedDatasetPipeline):
     @property
     @abc.abstractmethod
     def thresholds_dict(self) -> Dict[str, float]:  # e.g. {"auPrc": 0.95}
@@ -165,7 +164,7 @@ class ConditionalDeploymentTrainingPipeline(training_pipeline.TrainingPipeline):
             api_endpoint: str = "us-central1-aiplatform.googleapis.com",
         ):
             importer = importer_node.importer(
-                artifact_uri=self.annotation_dataset_uri,
+                artifact_uri=self.managed_dataset_uri,
                 artifact_class=Dataset,
                 reimport=False,
             )
@@ -174,7 +173,7 @@ class ConditionalDeploymentTrainingPipeline(training_pipeline.TrainingPipeline):
                 project=project, pipeline_root=pipeline_root, dataset=importer.output
             )
 
-            model_eval_task = ConditionalDeploymentTrainingPipeline.classify_model_eval_metrics(
+            model_eval_task = ConditionalDeploymentManagedDatasetPipeline.classify_model_eval_metrics(
                 project_id=project,
                 # gcp_region,
                 api_endpoint=api_endpoint,

@@ -1,5 +1,5 @@
 from training.image.classification.image_classification_training_pipeline import (
-    ImageClassificationTrainingPipeline,
+    ImageClassificationManagedDatasetPipeline,
 )
 from google_cloud_pipeline_components import aiplatform as gcc_aip
 from typing import Callable, List
@@ -33,11 +33,12 @@ REQUIREMENTS: List[str] = ["tqdm", "tensorflow_datasets==1.3.0"]
 PYTHON_MODULE_NAME = f"{source_utils._TrainingScriptPythonPackager._ROOT_MODULE}.{source_utils._TrainingScriptPythonPackager._TASK_MODULE_NAME}"
 
 
-class ImageClassificationCustomPythonPackageTrainingPipeline(
-    ImageClassificationTrainingPipeline
+class ImageClassificationCustomPythonPackageManagedDatasetPipeline(
+    ImageClassificationManagedDatasetPipeline
 ):
     id = "Image Classification Custom Python Package"
-    annotation_dataset_uri: str = "aiplatform://v1/projects/1012616486416/locations/us-central1/datasets/7601275726536376320"
+    managed_dataset_uri: str = "aiplatform://v1/projects/1012616486416/locations/us-central1/datasets/7601275726536376320"
+    should_deploy = True
 
     def create_training_op(
         self, project: str, pipeline_root: str, dataset: Dataset

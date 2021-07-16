@@ -2,19 +2,14 @@ from typing import Any, Callable
 import abc
 
 
-class TrainingPipeline(abc.ABC):
+class Pipeline(abc.ABC):
     """
-        Uses existing managed dataset and builds an arbitrary pipeline
+    An arbitrary pipeline
     """
 
     @property
     @abc.abstractmethod
     def id(self) -> str:  # Must be unique
-        pass
-
-    @property
-    @abc.abstractmethod
-    def annotation_dataset_uri(self) -> str:
         pass
 
     @abc.abstractmethod
@@ -23,7 +18,7 @@ class TrainingPipeline(abc.ABC):
 
     # TODO: This should not be in this class
     @property
-    def training_frequency(self) -> str:
+    def run_frequency(self) -> str:
         # Frequency in unix-cron format (https://cloud.google.com/scheduler/docs/configuring/cron-job-schedules)
         # Default is: Every Monday at 09:00
         return "0 9 * * 1"

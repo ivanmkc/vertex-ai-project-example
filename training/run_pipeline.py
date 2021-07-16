@@ -1,16 +1,20 @@
 from image.classification.image_classification_automl_training_pipeline import (
-    ImageClassificationTrainingPipeline,
+    ImageClassificationManagedDatasetPipeline,
 )
 from image.classification.image_classification_custom_training_pipeline import (
-    ImageClassificationCustomTrainingPipeline,
+    ImageClassificationCustomManagedDatasetPipeline,
 )
 
 from image.classification.image_classification_custom_python_package_training_pipeline import (
-    ImageClassificationCustomPythonPackageTrainingPipeline,
+    ImageClassificationCustomPythonPackageManagedDatasetPipeline,
+)
+
+from image.classification.image_classification_automl_training_pipeline import (
+    ImageClassificationAutoMLManagedDatasetPipeline,
 )
 
 from google.cloud import aiplatform
-import training_pipeline
+from pipeline import Pipeline
 from kfp.v2 import compiler  # noqa: F811
 from kfp.v2.google.client import AIPlatformClient  # noqa: F811
 from typing import List, Set
@@ -42,14 +46,14 @@ def retrain_for_changed_datasets(project_id: str, region: str):
     ]
 
     # Get all pipelines for changed datasets
-    all_pipelines: List[training_pipeline.TrainingPipeline] = []  # TODO
+    all_pipelines: List[Pipeline] = []  # TODO
 
     changed_dataset_uris = set([changed_datasets.uri for dataset in changed_datasets])
 
     # Run all pipelines that use a modified dataseta
     for pipeline in all_pipelines:
-        if pipeline.annotation_dataset_uri in changed_dataset_uris:
-            run_training_pipeline(
+        if pipeline.managed_dataset_uri in changed_dataset_uris:
+            run_pipeline(
                 project_id=project_id,
                 region=region,
                 pipeline_root=pipeline_root,
@@ -60,11 +64,11 @@ def retrain_for_changed_datasets(project_id: str, region: str):
 JOB_SPEC_PATH = "package.json"
 
 
-def run_training_pipeline(
+def run_pipeline(
     project_id: str,
     region: str,
     pipeline_root: str,
-    pipeline: training_pipeline.TrainingPipeline,
+    pipeline: Pipeline,
 ):
     compiler.Compiler().compile(
         pipeline_func=pipeline.create_pipeline(
@@ -88,9 +92,9 @@ def run_training_pipeline(
 BUCKET_NAME = "gs://ivanmkc-mineral/training"
 pipeline_root = "{}/pipeline_root".format(BUCKET_NAME)
 
-run_training_pipeline(
+run_pipeline(
     project_id="python-docs-samples-tests",
     region="us-central1",
     pipeline_root=pipeline_root,
-    pipeline=ImageClassificationCustomPythonPackageTrainingPipeline(),
+    pipeline=ImageClassificationCustomPythonPackageManagedDatasetPipeline(),
 )

@@ -1,14 +1,16 @@
 from training.image.classification.image_classification_training_pipeline import (
-    ImageClassificationTrainingPipeline,
+    ImageClassificationManagedDatasetPipeline,
 )
 from google_cloud_pipeline_components import aiplatform as gcc_aip
 from typing import Callable
 from kfp.v2.dsl import component, Dataset, Input, Output, OutputPath, Model
 
 
-class ImageClassificationCustomTrainingPipeline(ImageClassificationTrainingPipeline):
+class ImageClassificationCustomManagedDatasetPipeline(
+    ImageClassificationManagedDatasetPipeline
+):
     id = "Image Classification Custom"
-    annotation_dataset_uri: str = "aiplatform://v1/projects/1012616486416/locations/us-central1/datasets/7601275726536376320"
+    managed_dataset_uri: str = "aiplatform://v1/projects/1012616486416/locations/us-central1/datasets/7601275726536376320"
 
     # @component
     # def training_op(
@@ -203,7 +205,7 @@ class ImageClassificationCustomTrainingPipeline(ImageClassificationTrainingPipel
         from datetime import datetime
 
         TIMESTAMP = datetime.now().strftime("%Y%m%d%H%M%S")
-        return ImageClassificationCustomTrainingPipeline.train(
+        return ImageClassificationCustomManagedDatasetPipeline.train(
             dataset,
             pipeline_root=pipeline_root,
             experiment_name="test-" + TIMESTAMP,
@@ -211,7 +213,7 @@ class ImageClassificationCustomTrainingPipeline(ImageClassificationTrainingPipel
             num_epochs=1,
         )
 
-        # train_task = ImageClassificationCustomTrainingPipeline.training_op(
+        # train_task = ImageClassificationCustomManagedDatasetPipeline.training_op(
         #     dataset=dataset
         # )
 

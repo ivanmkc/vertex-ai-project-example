@@ -10,6 +10,7 @@ import json
 import tqdm
 from typing import List
 
+# TODO: Switch to arg
 IMG_SIZE = 32
 
 
@@ -54,32 +55,14 @@ def load_aip_dataset(
                 if test_run:
                     break
 
-    # data = list()
-    # for data_file_url in tqdm.tqdm(data_file_urls):
-    #     with tf.io.gfile.GFile(name=data_file_url, mode="r") as gf:
-    #         txt = gf.read()
-    #         data.append(txt)
-    # data = tf.keras.preprocessing.image_dataset_from_directory
-
-    # dataset = tf.keras.preprocessing.image_dataset_from_directory(
-    #     aip_data_uri_pattern,
-    #     validation_split=0.2,
-    #     subset="training",
-    #     seed=123,
-    #     image_size=(100, 100),
-    #     batch_size=batch_size,
-    # )
-
     filenames_ds = tf.data.Dataset.from_tensor_slices(data_file_urls)
     dataset = filenames_ds.map(
         parse_image, num_parallel_calls=tf.data.experimental.AUTOTUNE
     )
 
     print(f" data files count: {len(data_file_urls)}")
-    # print(f" data count: {len(data)}")
     print(f" labels count: {len(labels)}")
 
-    # dataset = tf.data.Dataset.from_tensor_slices(data)
     label_ds = tf.data.Dataset.from_tensor_slices(labels)
     label_ds = label_ds.map(lambda x: tf.one_hot(x, num_classes))
 
@@ -188,13 +171,13 @@ aip_model_dir = os.environ.get("AIP_MODEL_DIR")
 aip_data_format = os.environ.get("AIP_DATA_FORMAT")
 aip_training_data_uri = os.environ.get("AIP_TRAINING_DATA_URI")
 aip_validation_data_uri = os.environ.get("AIP_VALIDATION_DATA_URI")
-aip_test_data_uri = os.environ.get("AIP_TEST_DATA_URI")
+# aip_test_data_uri = os.environ.get("AIP_TEST_DATA_URI")
 
 print(f"aip_model_dir: {aip_model_dir}")
 print(f"aip_data_format: {aip_data_format}")
 print(f"aip_training_data_uri: {aip_training_data_uri}")
 print(f"aip_validation_data_uri: {aip_validation_data_uri}")
-print(f"aip_test_data_uri: {aip_test_data_uri}")
+# print(f"aip_test_data_uri: {aip_test_data_uri}")
 
 print("Loading AIP dataset")
 train_ds = load_aip_dataset(

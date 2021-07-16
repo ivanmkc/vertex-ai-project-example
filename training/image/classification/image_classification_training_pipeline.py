@@ -1,7 +1,7 @@
-from training.import_and_training_pipeline import (
-    ImportAndTrainingPipeline,
+from training.import_training_deploy_pipeline import (
+    ImportTrainingDeployPipeline,
 )
 
 # TODO: May remove this layer if not needed
-class ImageClassificationTrainingPipeline(ImportAndTrainingPipeline):
+class ImageClassificationManagedDatasetPipeline(ImportTrainingDeployPipeline):
     pass

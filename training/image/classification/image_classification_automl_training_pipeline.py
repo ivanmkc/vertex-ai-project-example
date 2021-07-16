@@ -9,6 +9,7 @@ from kfp.v2.dsl import Dataset
 class ImageClassificationAutoMLTrainingPipeline(ImageClassificationTrainingPipeline):
     id = "Image Classification AutoML"
     annotation_dataset_uri: str = "aiplatform://v1/projects/1012616486416/locations/us-central1/datasets/7601275726536376320"
+    should_deploy = True
 
     def create_training_op(
         self, project: str, pipeline_root: str, dataset: Dataset
