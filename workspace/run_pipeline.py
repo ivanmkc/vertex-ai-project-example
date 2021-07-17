@@ -1,24 +1,7 @@
-from training.image.classification.image_classification_automl_training_pipeline import (
-    ImageClassificationAutoMLManagedDatasetPipeline,
-)
-from training.image.classification.image_classification_custom_training_pipeline import (
-    ImageClassificationCustomManagedDatasetPipeline,
-)
-
-from training.image.classification.image_classification_custom_python_package_training_pipeline import (
-    ImageClassificationCustomPythonPackageManagedDatasetPipeline,
-)
-
-from training.image.classification.image_classification_automl_training_pipeline import (
-    ImageClassificationAutoMLManagedDatasetPipeline,
-)
-
-from training.image.object_detection.object_detection_automl_training_pipeline import (
-    ObjectDetectionAutoMLManagedDatasetPipeline,
-)
+from workspace.pipelines import pipelines
 
 from google.cloud import aiplatform
-from pipeline import Pipeline
+from pipelines_folder.pipeline import Pipeline
 from kfp.v2 import compiler  # noqa: F811
 from kfp.v2.google.client import AIPlatformClient  # noqa: F811
 from typing import List, Set
@@ -96,9 +79,16 @@ def run_pipeline(
 BUCKET_NAME = "gs://ivanmkc-mineral/training"
 pipeline_root = "{}/pipeline_root".format(BUCKET_NAME)
 
-run_pipeline(
-    project_id="python-docs-samples-tests",
-    region="us-central1",
-    pipeline_root=pipeline_root,
-    pipeline=ObjectDetectionAutoMLManagedDatasetPipeline(),
-)
+for pipeline in [
+    pipelines.classification.automl_pipeline,
+    pipelines.classification.custom_pipeline,
+    pipelines.object_detection.automl_pipeline,
+    pipelines.object_detection.custom_pipeline,
+]:
+    print(f"Running pipeline: {pipeline.name}")
+    run_pipeline(
+        project_id="python-docs-samples-tests",
+        region="us-central1",
+        pipeline_root=pipeline_root,
+        pipeline=pipeline,
+    )

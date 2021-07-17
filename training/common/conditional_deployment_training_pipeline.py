@@ -159,7 +159,7 @@ class ConditionalDeploymentManagedDatasetPipeline(ManagedDatasetPipeline):
         return (dep_decision,)
 
     def create_pipeline(self, project: str, pipeline_root: str) -> Callable[..., Any]:
-        @kfp.dsl.pipeline(name=self.pipeline_name, pipeline_root=pipeline_root)
+        @kfp.dsl.pipeline(name=self.name, pipeline_root=pipeline_root)
         def pipeline(
             api_endpoint: str = "us-central1-aiplatform.googleapis.com",
         ):

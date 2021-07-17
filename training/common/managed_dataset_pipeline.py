@@ -1,5 +1,6 @@
 import abc
-from pipelines.pipeline import Pipeline
+
+from pipelines_folder.pipeline import Pipeline
 import dataclasses
 from typing import Callable, Optional, Sequence, Union
 from google_cloud_pipeline_components import aiplatform as gcc_aip
@@ -49,7 +50,6 @@ class ManagedDatasetPipeline(Pipeline):
     Uses existing managed dataset and builds an arbitrary pipeline
     """
 
-    @property
-    @abc.abstractmethod
-    def managed_dataset(self) -> Optional[ManagedDataset]:
-        pass
+    def __init__(self, name: str, managed_dataset: Optional[ManagedDataset]):
+        super().__init__(name=name)
+        self.managed_dataset = managed_dataset

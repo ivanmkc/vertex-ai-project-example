@@ -1,28 +1,34 @@
-from typing import Any, Callable, Optional, Sequence, Union
+from typing import Any, Callable
 import abc
 
-from pipelines.pipeline import Pipeline
 from google_cloud_pipeline_components import aiplatform as gcc_aip
 import kfp
 from kfp.v2.dsl import (
     Dataset,
 )
-from training.common.managed_dataset_pipeline import ManagedDatasetPipeline
+import training.common.managed_dataset_pipeline as managed_dataset_pipeline
 
 
-class DatasetTrainingDeployPipeline(ManagedDatasetPipeline):
+class DatasetTrainingDeployPipeline(managed_dataset_pipeline.ManagedDatasetPipeline):
     """
     Create a new Vertex AI managed dataset and trains an arbitrary AutoML or custom model
     """
 
-    should_deploy: bool = False
+    def __init__(
+        self,
+        name: str,
+        managed_dataset: managed_dataset_pipeline.ManagedDataset,
+        should_deploy: bool,
+    ):
+        super().__init__(name=name, managed_dataset=managed_dataset)
+        self.should_deploy = should_deploy
 
     @abc.abstractmethod
     def create_training_op(self, project: str, dataset: Dataset) -> Callable:
         pass
 
     def create_pipeline(self, project: str, pipeline_root: str) -> Callable[..., Any]:
-        @kfp.dsl.pipeline(name=self.pipeline_name, pipeline_root=pipeline_root)
+        @kfp.dsl.pipeline(name=self.name, pipeline_root=pipeline_root)
         def pipeline():
             dataset_op = self.managed_dataset.as_kfp_op(project=project)
 
