@@ -1,14 +1,20 @@
-from training.common.import_training_deploy_pipeline import (
-    ImportTrainingDeployPipeline,
+from training.common.managed_dataset_pipeline import (
+    ExistingManagedDataset,
+    ManagedDataset,
+)
+from training.common.dataset_training_deploy_pipeline import (
+    DatasetTrainingDeployPipeline,
 )
 from google_cloud_pipeline_components import aiplatform as gcc_aip
 from typing import Callable
 from kfp.v2.dsl import Dataset
 
 
-class ImageClassificationAutoMLManagedDatasetPipeline(ImportTrainingDeployPipeline):
+class ImageClassificationAutoMLManagedDatasetPipeline(DatasetTrainingDeployPipeline):
     id = "Image Classification AutoML"
-    managed_dataset_uri: str = "aiplatform://v1/projects/1012616486416/locations/us-central1/datasets/7601275726536376320"
+    managed_dataset: ManagedDataset = ExistingManagedDataset(
+        dataset_uri="aiplatform://v1/projects/1012616486416/locations/us-central1/datasets/7601275726536376320"
+    )
     should_deploy = True
 
     def create_training_op(

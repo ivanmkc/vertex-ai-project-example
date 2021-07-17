@@ -100,5 +100,5 @@ run_pipeline(
     project_id="python-docs-samples-tests",
     region="us-central1",
     pipeline_root=pipeline_root,
-    pipeline=ImageClassificationCustomPythonPackageManagedDatasetPipeline(),
+    pipeline=ObjectDetectionAutoMLManagedDatasetPipeline(),
 )

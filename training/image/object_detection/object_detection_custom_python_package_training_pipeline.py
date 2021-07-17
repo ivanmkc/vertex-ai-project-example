@@ -5,8 +5,8 @@ from google_cloud_pipeline_components import aiplatform as gcc_aip
 from typing import Callable
 from kfp.v2.dsl import Dataset
 from google.cloud import aiplatform
-from google.cloud.aiplatform.utils import source_utils
 from google.cloud.aiplatform import gapic as aip
+from training.common.managed_dataset_pipeline import NewManagedDataset
 
 TRAIN_VERSION = "tf-gpu.2-1"
 DEPLOY_VERSION = "tf2-gpu.2-1"
@@ -28,7 +28,13 @@ class ObjectDetectionCustomPythonPackageManagedDatasetPipeline(
     CustomPythonPackageManagedDatasetPipeline
 ):
     id = "Object Detection Custom Python Package"
-    managed_dataset_uri: str = "aiplatform://v1/projects/1012616486416/locations/us-central1/datasets/7601275726536376320"
+    managed_dataset = NewManagedDataset(
+        display_name="Object Detection Dataset",
+        gcs_source="gs://cloud-samples-data/vision/salads.csv",
+        import_schema_uri=aiplatform.schema.dataset.ioformat.image.bounding_box,
+        data_item_labels=None,
+    )
+
     should_deploy = True
 
     training_script_path = (

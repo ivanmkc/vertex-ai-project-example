@@ -1,6 +1,6 @@
 from abc import abstractmethod
-from training.common.import_training_deploy_pipeline import (
-    ImportTrainingDeployPipeline,
+from training.common.dataset_training_deploy_pipeline import (
+    DatasetTrainingDeployPipeline,
 )
 from typing import Callable, List
 from kfp.v2.dsl import Dataset
@@ -9,7 +9,7 @@ from google.cloud.aiplatform.utils import source_utils
 PYTHON_MODULE_NAME = f"{source_utils._TrainingScriptPythonPackager._ROOT_MODULE}.{source_utils._TrainingScriptPythonPackager._TASK_MODULE_NAME}"
 
 
-class CustomPythonPackageManagedDatasetPipeline(ImportTrainingDeployPipeline):
+class CustomPythonPackageManagedDatasetPipeline(DatasetTrainingDeployPipeline):
     @property
     @abstractmethod
     def training_script_path(self) -> str:

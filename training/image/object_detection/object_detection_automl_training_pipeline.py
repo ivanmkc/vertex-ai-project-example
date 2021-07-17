@@ -5,16 +5,17 @@ from google_cloud_pipeline_components import aiplatform as gcc_aip
 from typing import Callable
 from kfp.v2.dsl import Dataset
 from google.cloud import aiplatform
-from typing import Optional
-import abc
+from training.common.managed_dataset_pipeline import NewManagedDataset
 
 
 class ObjectDetectionAutoMLManagedDatasetPipeline(DatasetTrainingDeployPipeline):
     id = "Object Detection AutoML"
-    dataset_display_name = "Object Detection Dataset"
-    dataset_gcs_source = "gs://cloud-samples-data/vision/salads.csv"
-    dataset_import_schema_uri = aiplatform.schema.dataset.ioformat.image.bounding_box
-    dataset_data_item_labels = None
+    managed_dataset = NewManagedDataset(
+        display_name="Object Detection Dataset",
+        gcs_source="gs://cloud-samples-data/vision/salads.csv",
+        import_schema_uri=aiplatform.schema.dataset.ioformat.image.bounding_box,
+        data_item_labels=None,
+    )
 
     should_deploy = True
 

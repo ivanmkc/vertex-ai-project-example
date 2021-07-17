@@ -1,21 +1,20 @@
-from training.common.import_training_deploy_pipeline import (
-    ImportTrainingDeployPipeline,
+from training.common.dataset_training_deploy_pipeline import (
+    DatasetTrainingDeployPipeline,
 )
 from google_cloud_pipeline_components import aiplatform as gcc_aip
 from typing import Callable
 from kfp.v2.dsl import component, Dataset, Input, Output, OutputPath, Model
+from training.common.managed_dataset_pipeline import (
+    ManagedDataset,
+    ExistingManagedDataset,
+)
 
 
-class ImageClassificationCustomManagedDatasetPipeline(ImportTrainingDeployPipeline):
+class ImageClassificationCustomManagedDatasetPipeline(DatasetTrainingDeployPipeline):
     id = "Image Classification Custom"
-    managed_dataset_uri: str = "aiplatform://v1/projects/1012616486416/locations/us-central1/datasets/7601275726536376320"
-
-    # @component
-    # def training_op(
-    #     dataset: Input[Dataset],
-    #     model: Output[Model],
-    # ):
-    #     print("training task: {}".format(dataset.id))
+    managed_dataset: ManagedDataset = ExistingManagedDataset(
+        dataset_uri="aiplatform://v1/projects/1012616486416/locations/us-central1/datasets/7601275726536376320"
+    )
 
     @component(packages_to_install=["google-cloud-storage", "google-cloud-aiplatform"])
     def train(
