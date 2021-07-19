@@ -7,6 +7,8 @@ from training.common.custom_python_package_training_pipeline import (
     CustomPythonPackageTrainingInfo,
     CustomPythonPackageManagedDatasetPipeline,
 )
+
+from training.common.dataset_training_deploy_pipeline import DeployInfo
 from google.cloud import aiplatform
 from google.cloud.aiplatform import gapic as aip
 from datasets import datasets
@@ -21,6 +23,7 @@ DEPLOY_IMAGE = "gcr.io/cloud-aiplatform/prediction/{}:latest".format(DEPLOY_VERS
 TRAIN_GPU = aip.AcceleratorType.NVIDIA_TESLA_K80
 TRAIN_NGPU = 1
 TRAIN_COMPUTE = "n1-standard-4"
+DEPLOY_COMPUTE = "n1-standard-4"
 
 
 class pipelines:
@@ -51,11 +54,16 @@ class pipelines:
                 container_uri=TRAIN_IMAGE,
                 model_serving_container_image_uri=DEPLOY_IMAGE,
                 annotation_schema_uri=aiplatform.schema.dataset.annotation.image.classification,
-                args=["--epochs", "50", "--image_width", "32", "--image_height", "32"],
+                args=["--epochs", "50", "--image-width", "32", "--image-height", "32"],
                 replica_count=1,
                 machine_type=TRAIN_COMPUTE,
                 accelerator_type=TRAIN_GPU.name,
                 accelerator_count=TRAIN_NGPU,
+            ),
+            deploy_info=DeployInfo(
+                machine_type=DEPLOY_COMPUTE,
+                accelerator_count=1,
+                accelerator_type="NVIDIA_TESLA_K80",
             ),
         )
 
@@ -86,10 +94,15 @@ class pipelines:
                 container_uri=TRAIN_IMAGE,
                 model_serving_container_image_uri=DEPLOY_IMAGE,
                 annotation_schema_uri=aiplatform.schema.dataset.annotation.image.bounding_box,
-                args=["--epochs", "50", "--image_width", "32", "--image_height", "32"],
+                args=["--epochs", "50", "--image-width", "32", "--image-height", "32"],
                 replica_count=1,
                 machine_type=TRAIN_COMPUTE,
                 accelerator_type=TRAIN_GPU.name,
                 accelerator_count=TRAIN_NGPU,
+            ),
+            deploy_info=DeployInfo(
+                machine_type=DEPLOY_COMPUTE,
+                accelerator_count=1,
+                accelerator_type="NVIDIA_TESLA_K80",
             ),
         )

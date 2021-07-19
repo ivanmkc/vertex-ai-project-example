@@ -10,14 +10,69 @@ import json
 import tqdm
 from typing import List
 
-# TODO: Switch to arg
-IMG_SIZE = 32
+
+def str2bool(v):
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ("yes", "true", "t", "y", "1"):
+        return True
+    elif v.lower() in ("no", "false", "f", "n", "0"):
+        return False
+    else:
+        raise argparse.ArgumentTypeError("Boolean value expected.")
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Keras Image Classification")
+    parser.add_argument(
+        "--epochs", default=10, type=int, help="number of training epochs"
+    )
+    parser.add_argument("--image-width", default=32, type=int, help="image width")
+    parser.add_argument("--image-height", default=32, type=int, help="image height")
+    parser.add_argument("--batch-size", default=16, type=int, help="mini-batch size")
+    parser.add_argument(
+        "--model-dir",
+        default=os.getenv("AIP_MODEL_DIR"),
+        type=str,
+        help="model directory",
+    )
+    parser.add_argument("--data-dir", default="./data", type=str, help="data directory")
+    parser.add_argument(
+        "--test-run",
+        default=False,
+        type=str2bool,
+        help="test run the training application, i.e. 1 epoch for training using sample dataset",
+    )
+    parser.add_argument("--model-version", default=1, type=int, help="model version")
+    parser.add_argument(
+        "--lr", dest="lr", default=0.01, type=float, help="Learning rate."
+    )
+    parser.add_argument(
+        "--steps",
+        dest="steps",
+        default=200,
+        type=int,
+        help="Number of steps per epoch.",
+    )
+    parser.add_argument(
+        "--distribute",
+        dest="distribute",
+        type=str,
+        default="single",
+        help="distributed training strategy",
+    )
+
+    args = parser.parse_args()
+    return args
+
+
+args = parse_args()
 
 
 def parse_image(filename):
     image = tf.io.read_file(filename)
     image = tf.image.decode_jpeg(image, channels=3)
-    image = tf.image.resize(image, [IMG_SIZE, IMG_SIZE])
+    image = tf.image.resize(image, [args.image_width, args.image_height])
     return image
 
 
@@ -81,61 +136,6 @@ def load_aip_dataset(
 
     return dataset
 
-
-def str2bool(v):
-    if isinstance(v, bool):
-        return v
-    if v.lower() in ("yes", "true", "t", "y", "1"):
-        return True
-    elif v.lower() in ("no", "false", "f", "n", "0"):
-        return False
-    else:
-        raise argparse.ArgumentTypeError("Boolean value expected.")
-
-
-def parse_args():
-    parser = argparse.ArgumentParser(description="Keras Image Classification")
-    parser.add_argument(
-        "--epochs", default=10, type=int, help="number of training epochs"
-    )
-    parser.add_argument("--batch-size", default=16, type=int, help="mini-batch size")
-    parser.add_argument(
-        "--model-dir",
-        default=os.getenv("AIP_MODEL_DIR"),
-        type=str,
-        help="model directory",
-    )
-    parser.add_argument("--data-dir", default="./data", type=str, help="data directory")
-    parser.add_argument(
-        "--test-run",
-        default=False,
-        type=str2bool,
-        help="test run the training application, i.e. 1 epoch for training using sample dataset",
-    )
-    parser.add_argument("--model-version", default=1, type=int, help="model version")
-    parser.add_argument(
-        "--lr", dest="lr", default=0.01, type=float, help="Learning rate."
-    )
-    parser.add_argument(
-        "--steps",
-        dest="steps",
-        default=200,
-        type=int,
-        help="Number of steps per epoch.",
-    )
-    parser.add_argument(
-        "--distribute",
-        dest="distribute",
-        type=str,
-        default="single",
-        help="distributed training strategy",
-    )
-
-    args = parser.parse_args()
-    return args
-
-
-args = parse_args()
 
 class_names = ["daisy", "dandelion", "roses", "sunflowers", "tulips"]
 class_indices = dict(zip(class_names, range(len(class_names))))
@@ -202,11 +202,11 @@ print("TF_CONFIG = {}".format(os.environ.get("TF_CONFIG", "Not found")))
 print("DEVICES", device_lib.list_local_devices())
 
 # Build the Keras model
-def build_and_compile_cnn_model(num_classes: int, image_size: int):
+def build_and_compile_cnn_model(num_classes: int, image_width: int, image_height: int):
     model = tf.keras.Sequential(
         [
             tf.keras.layers.Conv2D(
-                32, 3, activation="relu", input_shape=(image_size, image_size, 3)
+                32, 3, activation="relu", input_shape=(image_width, image_height, 3)
             ),
             tf.keras.layers.MaxPooling2D(),
             tf.keras.layers.Conv2D(32, 3, activation="relu"),
@@ -229,7 +229,11 @@ model_dir = os.getenv("AIP_MODEL_DIR")
 with strategy.scope():
     # Creation of dataset, and model building/compiling need to be within
     # `strategy.scope()`.
-    model = build_and_compile_cnn_model(num_classes=num_classes, image_size=IMG_SIZE)
+    model = build_and_compile_cnn_model(
+        num_classes=num_classes,
+        image_width=args.image_width,
+        image_height=args.image_height,
+    )
 
 model.fit(
     x=train_ds, epochs=args.epochs, validation_data=val_ds, steps_per_epoch=args.steps

@@ -3,6 +3,7 @@ import training.common.managed_dataset_pipeline as managed_dataset_pipeline
 
 from training.common.dataset_training_deploy_pipeline import (
     DatasetTrainingDeployPipeline,
+    DeployInfo,
 )
 from google_cloud_pipeline_components import aiplatform as gcc_aip
 from typing import Callable
@@ -37,9 +38,13 @@ class AutoMLImageManagedDatasetPipeline(DatasetTrainingDeployPipeline):
         managed_dataset: managed_dataset_pipeline.ManagedDataset,
         should_deploy: bool,
         training_info: AutoMLImageTrainingInfo,
+        deploy_info: DeployInfo = DeployInfo(),
     ):
         super().__init__(
-            name=name, managed_dataset=managed_dataset, should_deploy=should_deploy
+            name=name,
+            managed_dataset=managed_dataset,
+            should_deploy=should_deploy,
+            deploy_info=deploy_info,
         )
 
         self.training_info = training_info

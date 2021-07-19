@@ -1,3 +1,5 @@
+# https://keras.io/examples/vision/retinanet/
+
 # Single, Mirror and Multi-Machine Distributed Training for CIFAR-10
 
 import tensorflow_datasets as tfds
@@ -9,77 +11,6 @@ import sys
 import json
 import tqdm
 from typing import List
-
-# TODO: Switch to arg
-IMG_SIZE = 32
-
-
-def parse_image(filename):
-    image = tf.io.read_file(filename)
-    image = tf.image.decode_jpeg(image, channels=3)
-    image = tf.image.resize(image, [IMG_SIZE, IMG_SIZE])
-    return image
-
-
-# Scaling image data from (0, 255] to (0., 1.]
-def scale(image, label):
-    image = tf.cast(image, tf.float32)
-    image /= 255.0
-    return image, label
-
-
-def load_aip_dataset(
-    aip_data_uri_pattern: str,
-    batch_size: int,
-    class_names: List[str],
-    test_run: bool,
-    shuffle=True,
-    repeat=False,
-    seed=42,
-):
-
-    data_file_urls = list()
-    labels = list()
-
-    class_indices = dict(zip(class_names, range(len(class_names))))
-    num_classes = len(class_names)
-
-    for aip_data_uri in tqdm.tqdm(tf.io.gfile.glob(pattern=aip_data_uri_pattern)):
-        with tf.io.gfile.GFile(name=aip_data_uri, mode="r") as gfile:
-            for line in gfile.readlines():
-                line = json.loads(line)
-                data_file_urls.append(line["imageGcsUri"])
-                classification_annotation = line["classificationAnnotations"][0]
-                label = classification_annotation["displayName"]
-                labels.append(class_indices[label])
-                if test_run:
-                    break
-
-    filenames_ds = tf.data.Dataset.from_tensor_slices(data_file_urls)
-    dataset = filenames_ds.map(
-        parse_image, num_parallel_calls=tf.data.experimental.AUTOTUNE
-    )
-
-    print(f" data files count: {len(data_file_urls)}")
-    print(f" labels count: {len(labels)}")
-
-    label_ds = tf.data.Dataset.from_tensor_slices(labels)
-    label_ds = label_ds.map(lambda x: tf.one_hot(x, num_classes))
-
-    dataset = tf.data.Dataset.zip((dataset, label_ds)).map(scale).cache()
-
-    if shuffle:
-        # Shuffle locally at each iteration
-        dataset = dataset.shuffle(buffer_size=batch_size * 8, seed=seed)
-
-    if repeat:
-        dataset = dataset.repeat()
-
-    dataset = dataset.batch(batch_size)
-    # Users may need to reference `class_names`.
-    dataset.class_names = class_names
-
-    return dataset
 
 
 def str2bool(v):
@@ -98,6 +29,8 @@ def parse_args():
     parser.add_argument(
         "--epochs", default=10, type=int, help="number of training epochs"
     )
+    parser.add_argument("--image-width", default=32, type=int, help="image width")
+    parser.add_argument("--image-height", default=32, type=int, help="image height")
     parser.add_argument("--batch-size", default=16, type=int, help="mini-batch size")
     parser.add_argument(
         "--model-dir",
@@ -137,7 +70,76 @@ def parse_args():
 
 args = parse_args()
 
-class_names = ["daisy", "dandelion", "roses", "sunflowers", "tulips"]
+
+def parse_image(filename):
+    image = tf.io.read_file(filename)
+    image = tf.image.decode_jpeg(image, channels=3)
+    image = tf.image.resize(image, [args.image_width, args.image_height])
+    return image
+
+
+# Scaling image data from (0, 255] to (0., 1.]
+def scale(image, label):
+    image = tf.cast(image, tf.float32)
+    image /= 255.0
+    return image, label
+
+
+def load_aip_dataset(
+    aip_data_uri_pattern: str,
+    batch_size: int,
+    class_names: List[str],
+    test_run: bool,
+    shuffle=True,
+    repeat=False,
+    seed=42,
+):
+
+    data_file_urls = list()
+    labels = list()
+
+    class_indices = dict(zip(class_names, range(len(class_names))))
+    num_classes = len(class_names)
+
+    for aip_data_uri in tqdm.tqdm(tf.io.gfile.glob(pattern=aip_data_uri_pattern)):
+        with tf.io.gfile.GFile(name=aip_data_uri, mode="r") as gfile:
+            for line in gfile.readlines():
+                line = json.loads(line)
+                data_file_urls.append(line["imageGcsUri"])
+                for annotation in line["boundingBoxAnnotations"]:
+                    label = annotation["displayName"]
+                    labels.append(class_indices[label])
+                if test_run:
+                    break
+
+    filenames_ds = tf.data.Dataset.from_tensor_slices(data_file_urls)
+    dataset = filenames_ds.map(
+        parse_image, num_parallel_calls=tf.data.experimental.AUTOTUNE
+    )
+
+    print(f" data files count: {len(data_file_urls)}")
+    print(f" labels count: {len(labels)}")
+
+    label_ds = tf.data.Dataset.from_tensor_slices(labels)
+    label_ds = label_ds.map(lambda x: tf.one_hot(x, num_classes))
+
+    dataset = tf.data.Dataset.zip((dataset, label_ds)).map(scale).cache()
+
+    if shuffle:
+        # Shuffle locally at each iteration
+        dataset = dataset.shuffle(buffer_size=batch_size * 8, seed=seed)
+
+    if repeat:
+        dataset = dataset.repeat()
+
+    dataset = dataset.batch(batch_size)
+    # Users may need to reference `class_names`.
+    dataset.class_names = class_names
+
+    return dataset
+
+
+class_names = ["Salad", "Cheese", "Seafood", "Tomato", "Baked Goods"]
 class_indices = dict(zip(class_names, range(len(class_names))))
 num_classes = len(class_names)
 print(f" class names: {class_names}")
@@ -202,11 +204,11 @@ print("TF_CONFIG = {}".format(os.environ.get("TF_CONFIG", "Not found")))
 print("DEVICES", device_lib.list_local_devices())
 
 # Build the Keras model
-def build_and_compile_cnn_model(num_classes: int, image_size: int):
+def build_and_compile_cnn_model(num_classes: int, image_width: int, image_height: int):
     model = tf.keras.Sequential(
         [
             tf.keras.layers.Conv2D(
-                32, 3, activation="relu", input_shape=(image_size, image_size, 3)
+                32, 3, activation="relu", input_shape=(image_width, image_height, 3)
             ),
             tf.keras.layers.MaxPooling2D(),
             tf.keras.layers.Conv2D(32, 3, activation="relu"),
@@ -229,7 +231,11 @@ model_dir = os.getenv("AIP_MODEL_DIR")
 with strategy.scope():
     # Creation of dataset, and model building/compiling need to be within
     # `strategy.scope()`.
-    model = build_and_compile_cnn_model(num_classes=num_classes, image_size=IMG_SIZE)
+    model = build_and_compile_cnn_model(
+        num_classes=num_classes,
+        image_width=args.image_width,
+        image_height=args.image_height,
+    )
 
 model.fit(
     x=train_ds, epochs=args.epochs, validation_data=val_ds, steps_per_epoch=args.steps

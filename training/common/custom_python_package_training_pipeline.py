@@ -1,6 +1,7 @@
 import dataclasses
 from training.common.dataset_training_deploy_pipeline import (
     DatasetTrainingDeployPipeline,
+    DeployInfo,
 )
 from typing import Callable, List
 from kfp.v2.dsl import Dataset
@@ -62,11 +63,13 @@ class CustomPythonPackageManagedDatasetPipeline(DatasetTrainingDeployPipeline):
         training_script_path: str,
         requirements: List[str],
         training_info: CustomPythonPackageTrainingInfo,
+        deploy_info: DeployInfo = DeployInfo(),
     ):
         super().__init__(
             name=name,
             managed_dataset=managed_dataset,
             should_deploy=should_deploy,
+            deploy_info=deploy_info,
         )
 
         self.training_script_path = training_script_path
