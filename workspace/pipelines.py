@@ -1,4 +1,4 @@
-from training.image.classification.automl_image_training_pipeline import (
+from training.image.automl_image_training_pipeline import (
     AutoMLImageTrainingInfo,
     AutoMLImageManagedDatasetPipeline,
 )
@@ -47,7 +47,7 @@ class pipelines:
             managed_dataset=datasets.classification.flowers,
             should_deploy=True,
             training_script_path=(
-                "training/image/classification/custom_tasks/image_classification_task.py"
+                "training/image/custom_tasks/image_classification_task.py"
             ),
             requirements=["tqdm", "tensorflow_datasets==1.3.0"],
             training_info=CustomPythonPackageTrainingInfo(
@@ -87,7 +87,7 @@ class pipelines:
             managed_dataset=datasets.object_detection.salads,
             should_deploy=True,
             training_script_path=(
-                "training/image/object_detection/custom_tasks/object_detection_task.py"
+                "training/image/custom_tasks/object_detection_task.py"
             ),
             requirements=["tqdm", "tensorflow_datasets==1.3.0"],
             training_info=CustomPythonPackageTrainingInfo(
