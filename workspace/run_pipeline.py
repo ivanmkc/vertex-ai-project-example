@@ -80,14 +80,14 @@ BUCKET_NAME = "gs://ivanmkc-mineral/training"
 pipeline_root = "{}/pipeline_root".format(BUCKET_NAME)
 
 for pipeline in [
-    pipelines.classification.automl_pipeline,
-    pipelines.classification.custom_pipeline,
+    # pipelines.classification.automl_pipeline,
+    # pipelines.classification.custom_pipeline,
     pipelines.object_detection.automl_pipeline,
-    pipelines.object_detection.custom_pipeline,
+    # pipelines.object_detection.custom_pipeline,
 ]:
     print(f"Running pipeline: {pipeline.name}")
     run_pipeline(
-        project_id="python-docs-samples-tests",
+        project_id="mineral-cloud-ai",
         region="us-central1",
         pipeline_root=pipeline_root,
         pipeline=pipeline,

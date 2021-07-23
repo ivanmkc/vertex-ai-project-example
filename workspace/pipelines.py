@@ -11,7 +11,7 @@ from training.common.custom_python_package_training_pipeline import (
 from training.common.dataset_training_deploy_pipeline import DeployInfo
 from google.cloud import aiplatform
 from google.cloud.aiplatform import gapic as aip
-from datasets import datasets
+from workspace.datasets import datasets
 
 # Custom training constants
 TRAIN_VERSION = "tf-gpu.2-1"
@@ -70,7 +70,7 @@ class pipelines:
     class object_detection:
         automl_pipeline = AutoMLImageManagedDatasetPipeline(
             name="object-detection-automl",
-            managed_dataset=datasets.object_detection.salads,
+            managed_dataset=datasets.object_detection.mineral_plants_train,
             should_deploy=True,
             training_info=AutoMLImageTrainingInfo(
                 prediction_type="object_detection",

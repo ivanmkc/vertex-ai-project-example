@@ -144,6 +144,8 @@ class DatasetTrainingDeployPipeline(managed_dataset_pipeline.ManagedDatasetPipel
                 project=project, pipeline_root=pipeline_root, dataset=dataset_op.output
             )
 
+            # TODO: Add optional evaluation task
+
             if self.should_deploy:
                 deploy_op = gcc_aip.ModelDeployOp(
                     model=training_op.outputs["model"],
