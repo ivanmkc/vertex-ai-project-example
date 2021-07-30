@@ -19,16 +19,12 @@ class datasets:
             data_item_labels=None,
         )
 
-        mineral_plants_train = NewManagedDataset(
+        mineral_plants = NewManagedDataset(
             display_name="Object Detection Dataset",
-            gcs_source="gs://prototype-image-data/ivanmkc/object_detection/train/image_annotations.jsonl",
-            import_schema_uri=aiplatform.schema.dataset.ioformat.image.bounding_box,
-            data_item_labels=None,
-        )
-
-        mineral_plants_validation = NewManagedDataset(
-            display_name="Object Detection Dataset",
-            gcs_source="gs://prototype-image-data/ivanmkc/object_detection/validation/image_annotations.jsonl",
+            gcs_source=[
+                "gs://prototype-image-data/ivanmkc/object_detection/train/image_annotations.jsonl",
+                "gs://prototype-image-data/ivanmkc/object_detection/validation/image_annotations.jsonl",
+            ],
             import_schema_uri=aiplatform.schema.dataset.ioformat.image.bounding_box,
             data_item_labels=None,
         )

@@ -8,7 +8,7 @@ from training.common.custom_python_package_training_pipeline import (
     CustomPythonPackageManagedDatasetPipeline,
 )
 
-from training.common.dataset_training_deploy_pipeline import DeployInfo
+from training.common.dataset_training_deploy_pipeline import DeployInfo, ExportInfo
 from google.cloud import aiplatform
 from google.cloud.aiplatform import gapic as aip
 from workspace.datasets import datasets
@@ -31,7 +31,6 @@ class pipelines:
         automl_pipeline = AutoMLImageManagedDatasetPipeline(
             name="image-classification-automl",
             managed_dataset=datasets.classification.flowers,
-            should_deploy=True,
             training_info=AutoMLImageTrainingInfo(
                 prediction_type="classification",
                 model_type="CLOUD",
@@ -45,7 +44,6 @@ class pipelines:
         custom_pipeline = CustomPythonPackageManagedDatasetPipeline(
             name="image-classification-custom",
             managed_dataset=datasets.classification.flowers,
-            should_deploy=True,
             training_script_path=(
                 "training/image/custom_tasks/image_classification_task.py"
             ),
@@ -70,22 +68,21 @@ class pipelines:
     class object_detection:
         automl_pipeline = AutoMLImageManagedDatasetPipeline(
             name="object-detection-automl",
-            managed_dataset=datasets.object_detection.mineral_plants_train,
-            should_deploy=True,
+            managed_dataset=datasets.object_detection.mineral_plants,
             training_info=AutoMLImageTrainingInfo(
                 prediction_type="object_detection",
-                model_type="CLOUD",
-                training_fraction_split=0.6,
-                validation_fraction_split=0.2,
-                test_fraction_split=0.2,
-                budget_milli_node_hours=20000,
+                model_type="MOBILE_TF_LOW_LATENCY_1",
+                budget_milli_node_hours=40000,
+            ),
+            export_info=ExportInfo(
+                export_format_id="tf-saved-model",
+                artifact_destination="gs://prototype-image-data/exported_models",
             ),
         )
 
         custom_pipeline = CustomPythonPackageManagedDatasetPipeline(
             name="object-detection-custom",
             managed_dataset=datasets.object_detection.salads,
-            should_deploy=True,
             training_script_path=(
                 "training/image/custom_tasks/object_detection_task.py"
             ),
@@ -104,5 +101,9 @@ class pipelines:
                 machine_type=DEPLOY_COMPUTE,
                 accelerator_count=1,
                 accelerator_type="NVIDIA_TESLA_K80",
+            ),
+            export_info=ExportInfo(
+                export_format_id="tf-saved-model",
+                artifact_destination="gs://prototype-image-data/exported_models",
             ),
         )

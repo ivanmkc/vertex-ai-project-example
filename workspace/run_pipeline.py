@@ -76,7 +76,7 @@ def run_pipeline(
     # print(response)
 
 
-BUCKET_NAME = "gs://ivanmkc-mineral/training"
+BUCKET_NAME = "gs://prototype-image-data/pipeline_staging"
 pipeline_root = "{}/pipeline_root".format(BUCKET_NAME)
 
 for pipeline in [
@@ -87,7 +87,7 @@ for pipeline in [
 ]:
     print(f"Running pipeline: {pipeline.name}")
     run_pipeline(
-        project_id="mineral-cloud-ai",
+        project_id="google.com:mineral-cloud-ai",
         region="us-central1",
         pipeline_root=pipeline_root,
         pipeline=pipeline,

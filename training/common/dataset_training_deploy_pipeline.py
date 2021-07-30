@@ -12,6 +12,72 @@ from google.cloud.aiplatform import explain
 
 
 @dataclasses.dataclass
+class ExportInfo:
+    """Info for exporting a trained, exportable Model to a location specified by the user.
+    A Model is considered to be exportable if it has at least one `supported_export_formats`.
+    Either `artifact_destination` or `image_destination` must be provided.
+
+    Usage:
+        ExportInfo(
+            export_format_id='tf-saved-model'
+            artifact_destination='gs://my-bucket/models/'
+        )
+
+        or
+
+        ExportInfo(
+            export_format_id='custom-model'
+            image_destination='us-central1-docker.pkg.dev/projectId/repo/image'
+        )
+
+    Args:
+        export_format_id (str):
+            Required. The ID of the format in which the Model must be exported.
+            The list of export formats that this Model supports can be found
+            by calling `Model.supported_export_formats`.
+        artifact_destination (str):
+            The Cloud Storage location where the Model artifact is to be
+            written to. Under the directory given as the destination a
+            new one with name
+            "``model-export-<model-display-name>-<timestamp-of-export-call>``",
+            where timestamp is in YYYY-MM-DDThh:mm:ss.sssZ ISO-8601
+            format, will be created. Inside, the Model and any of its
+            supporting files will be written.
+
+            This field should only be set when, in [Model.supported_export_formats],
+            the value for the key given in `export_format_id` contains ``ARTIFACT``.
+        image_destination (str):
+            The Google Container Registry or Artifact Registry URI where
+            the Model container image will be copied to. Accepted forms:
+
+            -  Google Container Registry path. For example:
+            ``gcr.io/projectId/imageName:tag``.
+
+            -  Artifact Registry path. For example:
+            ``us-central1-docker.pkg.dev/projectId/repoName/imageName:tag``.
+
+            This field should only be set when, in [Model.supported_export_formats],
+            the value for the key given in `export_format_id` contains ``IMAGE``.
+        sync (bool):
+            Whether to execute this export synchronously. If False, this method
+            will be executed in concurrent Future and any downstream object will
+            be immediately returned and synced when the Future has completed.
+    Returns:
+        output_info (Dict[str, str]):
+            Details of the completed export with output destination paths to
+            the artifacts or container image.
+    Raises:
+        ValueError if model does not support exporting.
+
+        ValueError if invalid arguments or export formats are provided.
+    """
+
+    export_format_id: str
+    artifact_destination: Optional[str] = None
+    image_destination: Optional[str] = None
+
+
+@dataclasses.dataclass
 class DeployInfo:
     """Info for deploying a model to endpoint. Endpoint will be created if unspecified.
 
@@ -124,12 +190,12 @@ class DatasetTrainingDeployPipeline(managed_dataset_pipeline.ManagedDatasetPipel
         self,
         name: str,
         managed_dataset: managed_dataset_pipeline.ManagedDataset,
-        should_deploy: bool,
-        deploy_info: DeployInfo,
+        deploy_info: Optional[DeployInfo],
+        export_info: Optional[ExportInfo],
     ):
         super().__init__(name=name, managed_dataset=managed_dataset)
-        self.should_deploy = should_deploy
         self.deploy_info = deploy_info
+        self.export_info = export_info
 
     @abc.abstractmethod
     def create_training_op(self, project: str, dataset: Dataset) -> Callable:
@@ -146,7 +212,7 @@ class DatasetTrainingDeployPipeline(managed_dataset_pipeline.ManagedDatasetPipel
 
             # TODO: Add optional evaluation task
 
-            if self.should_deploy:
+            if self.deploy_info:
                 deploy_op = gcc_aip.ModelDeployOp(
                     model=training_op.outputs["model"],
                     # endpoint=self.deploy_info.endpoint,
@@ -163,6 +229,14 @@ class DatasetTrainingDeployPipeline(managed_dataset_pipeline.ManagedDatasetPipel
                     explanation_parameters=self.deploy_info.explanation_parameters,
                     metadata=self.deploy_info.metadata,
                     encryption_spec_key_name=self.deploy_info.encryption_spec_key_name,
+                )
+
+            if self.export_info:
+                export_op = gcc_aip.ModelExportOp(
+                    model=training_op.outputs["model"],
+                    export_format_id=self.export_info.export_format_id,
+                    artifact_destination=self.export_info.artifact_destination,
+                    image_destination=self.export_info.image_destination,
                 )
 
         return pipeline
