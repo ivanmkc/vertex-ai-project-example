@@ -72,11 +72,11 @@ class pipelines:
             training_info=AutoMLImageTrainingInfo(
                 prediction_type="object_detection",
                 model_type="MOBILE_TF_LOW_LATENCY_1",
-                budget_milli_node_hours=40000,
+                budget_milli_node_hours=20000,
             ),
             export_info=ExportInfo(
                 export_format_id="tf-saved-model",
-                artifact_destination="gs://prototype-image-data/exported_models",
+                artifact_destination="gs://mineral-cloud-data/exported_models",
             ),
         )
 
@@ -103,7 +103,7 @@ class pipelines:
                 accelerator_type="NVIDIA_TESLA_K80",
             ),
             export_info=ExportInfo(
-                export_format_id="tf-saved-model",
-                artifact_destination="gs://prototype-image-data/exported_models",
+                export_format_id="tflite",
+                artifact_destination="gs://mineral-cloud-data/exported_models",
             ),
         )

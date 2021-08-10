@@ -76,7 +76,7 @@ def run_pipeline(
     # print(response)
 
 
-BUCKET_NAME = "gs://prototype-image-data/pipeline_staging"
+BUCKET_NAME = "gs://mineral-cloud-data/pipeline_staging"
 pipeline_root = "{}/pipeline_root".format(BUCKET_NAME)
 
 for pipeline in [
