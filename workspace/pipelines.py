@@ -107,3 +107,33 @@ class pipelines:
                 artifact_destination="gs://mineral-cloud-data/exported_models",
             ),
         )
+
+    class image_segmentation:
+
+        custom_pipeline = CustomPythonPackageManagedDatasetPipeline(
+            name="image-segmentation-custom",
+            managed_dataset=datasets.image_segmentation.mineral_leaves,
+            training_script_path=(
+                "training/image/custom_tasks/image_segmentation_task.py"
+            ),
+            requirements=["tqdm", "tensorflow_datasets==1.3.0"],
+            training_info=CustomPythonPackageTrainingInfo(
+                container_uri=TRAIN_IMAGE,
+                model_serving_container_image_uri=DEPLOY_IMAGE,
+                annotation_schema_uri=aiplatform.schema.dataset.annotation.image.segmentation,
+                args=["--epochs", "50", "--image-width", "32", "--image-height", "32"],
+                replica_count=1,
+                machine_type=TRAIN_COMPUTE,
+                accelerator_type=TRAIN_GPU.name,
+                accelerator_count=TRAIN_NGPU,
+            ),
+            deploy_info=DeployInfo(
+                machine_type=DEPLOY_COMPUTE,
+                accelerator_count=1,
+                accelerator_type="NVIDIA_TESLA_K80",
+            ),
+            export_info=ExportInfo(
+                export_format_id="tflite",
+                artifact_destination="gs://mineral-cloud-data/exported_models",
+            ),
+        )

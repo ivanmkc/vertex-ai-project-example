@@ -20,11 +20,22 @@ class datasets:
         )
 
         mineral_plants = NewManagedDataset(
-            display_name="Object Detection Dataset",
+            display_name="Plants",
             gcs_source=[
                 "gs://mineral-cloud-data/ivanmkc/object_detection/train/image_annotations.jsonl",
                 "gs://mineral-cloud-data/ivanmkc/object_detection/validation/image_annotations.jsonl",
             ],
             import_schema_uri=aiplatform.schema.dataset.ioformat.image.bounding_box,
+            data_item_labels=None,
+        )
+
+    class image_segmentation:
+        mineral_leaves = NewManagedDataset(
+            display_name="Leaves",
+            gcs_source=[
+                "gs://mineral-cloud-data/ivanmkc/image_segmentation/train/image_annotations.jsonl",
+                "gs://mineral-cloud-data/ivanmkc/image_segmentation/validation/image_annotations.jsonl",
+            ],
+            import_schema_uri=aiplatform.schema.dataset.ioformat.image.image_segmentation,
             data_item_labels=None,
         )
