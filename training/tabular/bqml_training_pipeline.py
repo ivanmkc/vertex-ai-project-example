@@ -48,3 +48,26 @@ class BQMLTrainingPipeline(Pipeline):
             )
 
         return pipeline
+
+
+class BQQueryAutoMLPipeline(Pipeline):
+    """
+    Runs a BQ query, creates a model and generates evaluations
+    """
+
+    def __init__(self, name: str):
+        super().__init__(name=name)
+
+    def create_pipeline(self, project: str, pipeline_root: str) -> Callable[..., Any]:
+        @kfp.dsl.pipeline(name=self.name, pipeline_root=pipeline_root)
+        def pipeline():
+            query_op = bigquery.query(query="SELECT", output_uri="gcs://asdf")
+
+            roc_curve_op = gcc_aip.AutoMLTabularTrainingJobRunOp(
+                display_name=self.name,
+                optimization_prediction_type="classification",
+                dataset=dataset_create_op.output,
+                target_column="info",
+            )
+
+        return pipeline

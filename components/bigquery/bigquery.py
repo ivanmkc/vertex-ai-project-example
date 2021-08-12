@@ -89,6 +89,7 @@ def create_roc_curve(
 def query(
     # An input parameter of type string.
     query: str,
+    output_uri: Output[str]
 ):
     """Query"""
 
