@@ -1,6 +1,6 @@
 from training.common.managed_dataset_pipeline import (
     ExistingManagedDataset,
-    NewManagedDataset,
+    NewImageDataset,
 )
 from google.cloud import aiplatform
 
@@ -12,14 +12,14 @@ class datasets:
         )
 
     class object_detection:
-        salads = NewManagedDataset(
+        salads = NewImageDataset(
             display_name="Object Detection Dataset",
             gcs_source="gs://cloud-samples-data/vision/salads.csv",
             import_schema_uri=aiplatform.schema.dataset.ioformat.image.bounding_box,
             data_item_labels=None,
         )
 
-        mineral_plants = NewManagedDataset(
+        mineral_plants = NewImageDataset(
             display_name="Plants",
             gcs_source=[
                 "gs://mineral-cloud-data/ivanmkc/object_detection/train/image_annotations.jsonl",
@@ -30,7 +30,7 @@ class datasets:
         )
 
     class image_segmentation:
-        mineral_leaves = NewManagedDataset(
+        mineral_leaves = NewImageDataset(
             display_name="Leaves",
             gcs_source=[
                 "gs://mineral-cloud-data/ivanmkc/image_segmentation/train/image_annotations.jsonl",

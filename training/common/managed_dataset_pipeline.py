@@ -29,7 +29,7 @@ class ExistingManagedDataset(ManagedDataset):
 
 
 @dataclasses.dataclass
-class NewManagedDataset(ManagedDataset):
+class NewImageDataset(ManagedDataset):
     display_name: str
     gcs_source: Union[str, Sequence[str]]
     import_schema_uri: Optional[str]
