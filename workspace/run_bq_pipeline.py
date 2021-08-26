@@ -6,7 +6,10 @@ from kfp.v2 import compiler  # noqa: F811
 from kfp.v2.google.client import AIPlatformClient  # noqa: F811
 from typing import List, Set
 
-from training.tabular.bqml_training_pipeline import BQMLTrainingPipeline
+from training.tabular.bq_training_pipelines import (
+    BQMLTrainingPipeline,
+    BQQueryAutoMLPipeline,
+)
 
 
 def check_if_dataset_changed(
@@ -86,9 +89,14 @@ query = (
     "LIMIT 100"
 )
 
-pipeline = BQMLTrainingPipeline(name="my-model-name")
-
-for pipeline in [pipeline]:
+for pipeline in [
+    # BQMLTrainingPipeline(name="bqml-training"),
+    BQQueryAutoMLPipeline(
+        "bq-automl",
+        query=query,
+        bq_output_table_id="python-docs-samples-tests.ivan_test.output",
+    ),
+]:
     print(f"Running pipeline: {pipeline.name}")
     run_pipeline(
         project_id="python-docs-samples-tests",

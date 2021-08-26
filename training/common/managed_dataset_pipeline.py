@@ -42,6 +42,25 @@ class NewImageDataset(ManagedDataset):
         )
 
 
+@dataclasses.dataclass
+class NewTabularDataset(ManagedDataset):
+    display_name: str
+    gcs_source: Union[str, Sequence[str]]
+    bq_source: Optional[str]
+    import_schema_uri: Optional[str]
+    data_item_labels: Optional[dict]
+
+    def as_kfp_op(self, project: str) -> Callable:
+        return gcc_aip.TabularDatasetCreateOp(
+            display_name=self.display_name,
+            gcs_source=self.gcs_source,
+            bq_source=self.bq_source,
+            import_schema_uri=self.import_schema_uri,
+            data_item_labels=self.data_item_labels,
+            project=project,
+        )
+
+
 class ManagedDatasetPipeline(Pipeline):
     """
     Uses existing managed dataset and builds an arbitrary pipeline

@@ -50,24 +50,42 @@ class BQMLTrainingPipeline(Pipeline):
         return pipeline
 
 
+from google.cloud import aiplatform
+
+
 class BQQueryAutoMLPipeline(Pipeline):
     """
     Runs a BQ query, creates a model and generates evaluations
     """
 
-    def __init__(self, name: str):
+    def __init__(self, name: str, query: str, bq_output_table_id: str):
         super().__init__(name=name)
+
+        self.query = query
+        self.bq_output_table_id = bq_output_table_id
 
     def create_pipeline(self, project: str, pipeline_root: str) -> Callable[..., Any]:
         @kfp.dsl.pipeline(name=self.name, pipeline_root=pipeline_root)
         def pipeline():
-            query_op = bigquery.query(query="SELECT", output_uri="gcs://asdf")
+            query_op = bigquery.query(
+                query=self.query,
+                bq_output_table_id=self.bq_output_table_id,
+                project=project,
+            )
 
-            roc_curve_op = gcc_aip.AutoMLTabularTrainingJobRunOp(
+            dataset_op = gcc_aip.TabularDatasetCreateOp(
+                display_name=self.name,
+                gcs_source=None,
+                bq_source=query_op.output,
+                project=project,
+            )
+
+            training_op = gcc_aip.AutoMLTabularTrainingJobRunOp(
                 display_name=self.name,
                 optimization_prediction_type="classification",
-                dataset=dataset_create_op.output,
+                dataset=dataset_op.output,
                 target_column="info",
+                project=project,
             )
 
         return pipeline

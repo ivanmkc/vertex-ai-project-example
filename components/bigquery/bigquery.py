@@ -89,15 +89,23 @@ def create_roc_curve(
 def query(
     # An input parameter of type string.
     query: str,
-    output_uri: Output[str]
-):
-    """Query"""
+    bq_output_table_id: str,
+    project: str,
+) -> str:
+    """Query
+
+    https://cloud.google.com/bigquery/docs/writing-results?hl=en
+    """
 
     from google.cloud import bigquery
 
-    client = bigquery.Client()
+    client = bigquery.Client(project=project)
 
-    query_job = client.query(query)  # API request
-    rows = query_job.result()  # Waits for query to finish
+    job_config = bigquery.QueryJobConfig(destination=bq_output_table_id)
 
-    return
+    query_job = client.query(query, job_config=job_config)  # API request
+    query_job.result()  # Waits for query to finish
+
+    # TODO: Save job ID in metadata
+
+    return bq_output_table_id
