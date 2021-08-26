@@ -1,14 +1,21 @@
 # Single, Mirror and Multi-Machine Distributed Training for CIFAR-10
 
-import tensorflow_datasets as tfds
 import tensorflow as tf
+from tensorflow.keras.layers.experimental import preprocessing
+from tensorflow_examples.models.pix2pix import pix2pix
+
 from tensorflow.python.client import device_lib
 import argparse
 import os
 import sys
 import json
-import tqdm
 from typing import List
+
+
+print("Python Version = {}".format(sys.version))
+print("TensorFlow Version = {}".format(tf.__version__))
+print("TF_CONFIG = {}".format(os.environ.get("TF_CONFIG", "Not found")))
+print("DEVICES", device_lib.list_local_devices())
 
 
 def str2bool(v):
@@ -23,12 +30,12 @@ def str2bool(v):
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Keras Image Classification")
+    parser = argparse.ArgumentParser(description="Keras Image Segmentation")
     parser.add_argument(
         "--epochs", default=10, type=int, help="number of training epochs"
     )
-    parser.add_argument("--image-width", default=32, type=int, help="image width")
-    parser.add_argument("--image-height", default=32, type=int, help="image height")
+    # parser.add_argument("--image-width", default=32, type=int, help="image width")
+    # parser.add_argument("--image-height", default=32, type=int, help="image height")
     parser.add_argument("--batch-size", default=16, type=int, help="mini-batch size")
     parser.add_argument(
         "--model-dir",
@@ -37,12 +44,12 @@ def parse_args():
         help="model directory",
     )
     parser.add_argument("--data-dir", default="./data", type=str, help="data directory")
-    parser.add_argument(
-        "--test-run",
-        default=False,
-        type=str2bool,
-        help="test run the training application, i.e. 1 epoch for training using sample dataset",
-    )
+    # parser.add_argument(
+    #     "--test-run",
+    #     default=False,
+    #     type=str2bool,
+    #     help="test run the training application, i.e. 1 epoch for training using sample dataset",
+    # )
     parser.add_argument("--model-version", default=1, type=int, help="model version")
     parser.add_argument(
         "--lr", dest="lr", default=0.01, type=float, help="Learning rate."
@@ -69,80 +76,21 @@ def parse_args():
 args = parse_args()
 
 
-def parse_image(filename):
-    image = tf.io.read_file(filename)
-    image = tf.image.decode_jpeg(image, channels=3)
-    image = tf.image.resize(image, [args.image_width, args.image_height])
-    return image
+import numpy as np
+import json
+from typing import Any, Dict, List, Tuple
+from PIL import Image
+from io import BytesIO
 
 
-# Scaling image data from (0, 255] to (0., 1.]
-def scale(image, label):
-    image = tf.cast(image, tf.float32)
-    image /= 255.0
-    return image, label
-
-
-def load_aip_dataset(
-    aip_data_uri_pattern: str,
-    batch_size: int,
-    class_names: List[str],
-    test_run: bool,
-    shuffle=True,
-    repeat=False,
-    seed=42,
-):
-
-    data_file_urls = list()
-    labels = list()
-
-    class_indices = dict(zip(class_names, range(len(class_names))))
-    num_classes = len(class_names)
-
-    for aip_data_uri in tqdm.tqdm(tf.io.gfile.glob(pattern=aip_data_uri_pattern)):
+def create_dataset_from_uri_pattern(dataset_uri_pattern: str) -> List[str]:
+    instances = []
+    for aip_data_uri in tf.io.gfile.glob(pattern=dataset_uri_pattern):
         with tf.io.gfile.GFile(name=aip_data_uri, mode="r") as gfile:
             for line in gfile.readlines():
-                line = json.loads(line)
-                data_file_urls.append(line["imageGcsUri"])
-                classification_annotation = line["classificationAnnotations"][0]
-                label = classification_annotation["displayName"]
-                labels.append(class_indices[label])
-                if test_run:
-                    break
-
-    filenames_ds = tf.data.Dataset.from_tensor_slices(data_file_urls)
-    dataset = filenames_ds.map(
-        parse_image, num_parallel_calls=tf.data.experimental.AUTOTUNE
-    )
-
-    print(f" data files count: {len(data_file_urls)}")
-    print(f" labels count: {len(labels)}")
-
-    label_ds = tf.data.Dataset.from_tensor_slices(labels)
-    label_ds = label_ds.map(lambda x: tf.one_hot(x, num_classes))
-
-    dataset = tf.data.Dataset.zip((dataset, label_ds)).map(scale).cache()
-
-    if shuffle:
-        # Shuffle locally at each iteration
-        dataset = dataset.shuffle(buffer_size=batch_size * 8, seed=seed)
-
-    if repeat:
-        dataset = dataset.repeat()
-
-    dataset = dataset.batch(batch_size)
-    # Users may need to reference `class_names`.
-    dataset.class_names = class_names
-
-    return dataset
-
-
-class_names = ["daisy", "dandelion", "roses", "sunflowers", "tulips"]
-class_indices = dict(zip(class_names, range(len(class_names))))
-num_classes = len(class_names)
-print(f" class names: {class_names}")
-print(f" class indices: {class_indices}")
-print(f" num classes: {num_classes}")
+                instance = json.loads(line)
+                instances.append(instance)
+    return instances
 
 
 # Get strategy
@@ -158,6 +106,8 @@ elif args.distribute == "mirror":
 # Multiple Machine, multiple compute device
 elif args.distribute == "multi":
     strategy = tf.distribute.experimental.MultiWorkerMirroredStrategy()
+else:
+    raise ValueError(f"Unknown distrubute argument provided: {args.distribute}")
 
 # Multi-worker configuration
 print("num_replicas_in_sync = {}".format(strategy.num_replicas_in_sync))
@@ -179,65 +129,226 @@ print(f"aip_training_data_uri: {aip_training_data_uri}")
 print(f"aip_validation_data_uri: {aip_validation_data_uri}")
 # print(f"aip_test_data_uri: {aip_test_data_uri}")
 
-print("Loading AIP dataset")
-train_ds = load_aip_dataset(
-    aip_training_data_uri,
-    GLOBAL_BATCH_SIZE,
-    class_names,
-    args.test_run,
-    shuffle=True,
-    repeat=True,
+print("Loading AIP datasets")
+train_instances, validation_instances = (
+    create_dataset_from_uri_pattern(dataset_uri_pattern)
+    for dataset_uri_pattern in [
+        aip_training_data_uri,
+        aip_validation_data_uri,
+    ]
 )
-print("AIP training dataset is loaded")
-val_ds = load_aip_dataset(aip_validation_data_uri, 1, class_names, args.test_run)
-print("AIP validation dataset is loaded")
-# test_ds = load_aip_dataset(aip_test_data_uri, 1, class_names, args.test_run)
-# print("AIP test dataset is loaded")
+print("AIP test dataset is loaded")
 
-tfds.disable_progress_bar()
+from functools import partial
 
-print("Python Version = {}".format(sys.version))
-print("TensorFlow Version = {}".format(tf.__version__))
-print("TF_CONFIG = {}".format(os.environ.get("TF_CONFIG", "Not found")))
-print("DEVICES", device_lib.list_local_devices())
+# Extract color labels from training instances
+color_labels = {
+    annotation_spec_color["displayName"]
+    for instance in train_instances
+    for annotation_spec_color in instance["maskAnnotation"]["annotationSpecColors"]
+}
+color_labels_to_indices = {
+    label: index for index, label in enumerate(color_labels, start=1)
+}
 
-# Build the Keras model
-def build_and_compile_cnn_model(num_classes: int, image_width: int, image_height: int):
-    model = tf.keras.Sequential(
-        [
-            tf.keras.layers.Conv2D(
-                32, 3, activation="relu", input_shape=(image_width, image_height, 3)
-            ),
-            tf.keras.layers.MaxPooling2D(),
-            tf.keras.layers.Conv2D(32, 3, activation="relu"),
-            tf.keras.layers.MaxPooling2D(),
-            tf.keras.layers.Flatten(),
-            tf.keras.layers.Dense(num_classes, activation="softmax"),
-        ]
+
+def convert_instance_to_features(
+    raw_instance: Dict, color_labels_to_indices: Dict[str, int]
+) -> Tuple[str, List, List]:
+    image_uri = raw_instance["imageGcsUri"]
+
+    # Download image
+    image_data = tf.io.gfile.GFile(image_uri, "rb").read()
+    image_matrix = np.array(Image.open(BytesIO(image_data)))
+
+    # Gather colors
+    label_to_color_map = {}
+    for annotation_spec_color in raw_instance["maskAnnotation"]["annotationSpecColors"]:
+        color = annotation_spec_color["color"]
+        color_array = np.array([color["red"], color["green"], color["blue"]]) * 255
+        label_to_color_map[annotation_spec_color["displayName"]] = color_array.astype(
+            np.uint8
+        )
+
+    # Download mask
+    mask_uri = raw_instance["maskAnnotation"]["categoryMaskGcsUri"]
+    mask_data = tf.io.gfile.GFile(mask_uri, "rb").read()
+    mask_matrix = np.array(Image.open(BytesIO(mask_data)))
+
+    # Recolor mask
+    mask_recolored = np.zeros(
+        (mask_matrix.shape[0], mask_matrix.shape[1], 1), dtype=np.uint8
     )
-    model.compile(
-        loss=tf.keras.losses.categorical_crossentropy,
-        optimizer=tf.keras.optimizers.SGD(learning_rate=args.lr),
-        metrics=["accuracy"],
+
+    # print(f"label_to_color_map: {label_to_color_map}")
+    for label, color in label_to_color_map.items():
+        red, green, blue = mask_matrix.T  # Temporarily unpack the bands for readability
+
+        target_areas = (red == color[0]) & (green == color[1]) & (blue == color[2])
+
+        # print(f"target_areas: {np.sum(target_areas)}")
+        mask_recolored[target_areas.T] = color_labels_to_indices[label]
+
+    # print(f"image_uri: {image_uri}")
+    # print(f"mask_uri: {mask_uri}")
+    return image_uri, image_matrix, mask_recolored
+
+
+def instance_generator(
+    raw_instances: List[Dict], color_labels_to_indices: Dict[str, int]
+) -> Dict:
+    for raw_instance in raw_instances:
+        image_uri, image_matrix, mask_recolored = convert_instance_to_features(
+            raw_instance, color_labels_to_indices
+        )
+        yield {
+            "file_name": image_uri,
+            "image": image_matrix,
+            "segmentation_mask": mask_recolored,
+        }
+
+
+# Define output signature for generator
+output_signature = {
+    "file_name": tf.TensorSpec(shape=(), dtype=tf.string, name=None),
+    "image": tf.TensorSpec(shape=(None, None, 3), dtype=tf.uint8, name=None),
+    "segmentation_mask": tf.TensorSpec(
+        shape=(None, None, 1), dtype=tf.uint8, name=None
+    ),
+}
+
+dataset_train, dataset_validation = (
+    tf.data.Dataset.from_generator(
+        partial(instance_generator, instances, color_labels_to_indices),
+        output_signature=output_signature,
     )
-    return model
+    for instances in [train_instances, validation_instances]
+)
 
 
-# Train the model
-model_dir = os.getenv("AIP_MODEL_DIR")
+def normalize(input_image, input_mask):
+    input_image = tf.cast(input_image, tf.float32) / 255.0
+    # input_mask -= 1
+    return input_image, input_mask
+
+
+def load_image(datapoint):
+    input_image = tf.image.resize(datapoint["image"], (128, 128))
+    input_mask = tf.image.resize(datapoint["segmentation_mask"], (128, 128))
+
+    input_image, input_mask = normalize(input_image, input_mask)
+
+    return input_image, input_mask
+
+
+train_images, validation_images = (
+    dataset.map(load_image, num_parallel_calls=tf.data.AUTOTUNE)
+    for dataset in [dataset_train, dataset_validation]
+)
+
+
+class Augment(tf.keras.layers.Layer):
+    def __init__(self, seed=42):
+        super().__init__()
+        # both use the same seed, so they'll make the same randomn changes.
+        self.augment_inputs = preprocessing.RandomFlip(mode="horizontal", seed=seed)
+        self.augment_labels = preprocessing.RandomFlip(mode="horizontal", seed=seed)
+
+    def call(self, inputs, labels):
+        inputs = self.augment_inputs(inputs)
+        labels = self.augment_labels(labels)
+        return inputs, labels
+
+
+SHUFFLE_SEED = 42
+
+train_batches = (
+    train_images.cache()
+    .shuffle(buffer_size=GLOBAL_BATCH_SIZE * 8, seed=SHUFFLE_SEED)
+    .batch(GLOBAL_BATCH_SIZE)
+    .repeat()
+    .map(Augment())
+    .prefetch(buffer_size=tf.data.AUTOTUNE)
+)
+
+validation_batches = validation_images.batch(GLOBAL_BATCH_SIZE)
+
+
+def unet_model(output_channels: int):
+    base_model = tf.keras.applications.MobileNetV2(
+        input_shape=[128, 128, 3], include_top=False
+    )
+
+    # Use the activations of these layers
+    layer_names = [
+        "block_1_expand_relu",  # 64x64
+        "block_3_expand_relu",  # 32x32
+        "block_6_expand_relu",  # 16x16
+        "block_13_expand_relu",  # 8x8
+        "block_16_project",  # 4x4
+    ]
+    base_model_outputs = [base_model.get_layer(name).output for name in layer_names]
+
+    # Create the feature extraction model
+    down_stack = tf.keras.Model(inputs=base_model.input, outputs=base_model_outputs)
+
+    down_stack.trainable = False
+
+    up_stack = [
+        pix2pix.upsample(512, 3),  # 4x4 -> 8x8
+        pix2pix.upsample(256, 3),  # 8x8 -> 16x16
+        pix2pix.upsample(128, 3),  # 16x16 -> 32x32
+        pix2pix.upsample(64, 3),  # 32x32 -> 64x64
+    ]
+
+    inputs = tf.keras.layers.Input(shape=[128, 128, 3])
+
+    # Downsampling through the model
+    skips = down_stack(inputs)
+    x = skips[-1]
+    skips = reversed(skips[:-1])
+
+    # Upsampling and establishing the skip connections
+    for up, skip in zip(up_stack, skips):
+        x = up(x)
+        concat = tf.keras.layers.Concatenate()
+        x = concat([x, skip])
+
+    # This is the last layer of the model
+    last = tf.keras.layers.Conv2DTranspose(
+        filters=output_channels, kernel_size=3, strides=2, padding="same"
+    )  # 64x64 -> 128x128
+
+    x = last(x)
+
+    return tf.keras.Model(inputs=inputs, outputs=x)
+
+
+TRAIN_LENGTH = len(train_instances)
+STEPS_PER_EPOCH = TRAIN_LENGTH // GLOBAL_BATCH_SIZE
+
+OUTPUT_CLASSES = len(color_labels) + 1  # Add one for background color of 0
+VALIDATION_STEPS = len(validation_instances) // GLOBAL_BATCH_SIZE
 
 with strategy.scope():
-    # Creation of dataset, and model building/compiling need to be within
-    # `strategy.scope()`.
-    model = build_and_compile_cnn_model(
-        num_classes=num_classes,
-        image_width=args.image_width,
-        image_height=args.image_height,
+    model = unet_model(output_channels=OUTPUT_CLASSES)
+    model.compile(
+        optimizer="adam",
+        loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+        metrics=["accuracy"],
     )
 
-model.fit(
-    x=train_ds, epochs=args.epochs, validation_data=val_ds, steps_per_epoch=args.steps
+# Train the model
+model_history = model.fit(
+    train_batches,
+    epochs=args.epochs,
+    steps_per_epoch=STEPS_PER_EPOCH,
+    validation_steps=VALIDATION_STEPS,
+    validation_data=validation_batches,
+    callbacks=[],
 )
+
+model_dir = os.getenv("AIP_MODEL_DIR")
 
 if model_dir:
     model.save(model_dir)

@@ -116,12 +116,16 @@ class pipelines:
             training_script_path=(
                 "training/image/custom_tasks/image_segmentation_task.py"
             ),
-            requirements=["tqdm", "tensorflow_datasets==1.3.0"],
+            requirements=[
+                "tensorflow_examples @ git+https://github.com/tensorflow/examples.git@master#egg=corepkg",
+                "Pillow",
+                "tensorflow",
+            ],
             training_info=CustomPythonPackageTrainingInfo(
                 container_uri=TRAIN_IMAGE,
                 model_serving_container_image_uri=DEPLOY_IMAGE,
                 annotation_schema_uri=aiplatform.schema.dataset.annotation.image.segmentation,
-                args=["--epochs", "50", "--image-width", "32", "--image-height", "32"],
+                args=["--epochs", "20", "--distribute", "multi"],
                 replica_count=1,
                 machine_type=TRAIN_COMPUTE,
                 accelerator_type=TRAIN_GPU.name,
@@ -133,7 +137,7 @@ class pipelines:
                 accelerator_type="NVIDIA_TESLA_K80",
             ),
             export_info=ExportInfo(
-                export_format_id="tflite",
+                export_format_id="custom-trained",
                 artifact_destination="gs://mineral-cloud-data/exported_models",
             ),
         )
