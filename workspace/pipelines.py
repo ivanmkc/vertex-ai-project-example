@@ -41,6 +41,19 @@ class pipelines:
             ),
         )
 
+        automl_pipeline_car_damage = AutoMLImageManagedDatasetPipeline(
+            name="image-classification-automl-car-damage",
+            managed_dataset=datasets.classification.car_damage,
+            training_info=AutoMLImageTrainingInfo(
+                prediction_type="classification",
+                model_type="CLOUD",
+                training_fraction_split=0.6,
+                validation_fraction_split=0.2,
+                test_fraction_split=0.2,
+                budget_milli_node_hours=8000,
+            ),
+        )
+
         custom_pipeline = CustomPythonPackageManagedDatasetPipeline(
             name="image-classification-custom",
             managed_dataset=datasets.classification.flowers,
@@ -125,7 +138,14 @@ class pipelines:
                 container_uri=TRAIN_IMAGE,
                 model_serving_container_image_uri=DEPLOY_IMAGE,
                 annotation_schema_uri=aiplatform.schema.dataset.annotation.image.segmentation,
-                args=["--epochs", "20", "--distribute", "multi"],
+                args=[
+                    "--epochs",
+                    "20",
+                    "--distribute",
+                    "multi",
+                    "--confusion_matrix_destination_bucket",
+                    "TODO",
+                ],
                 replica_count=1,
                 machine_type=TRAIN_COMPUTE,
                 accelerator_type=TRAIN_GPU.name,
