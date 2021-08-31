@@ -76,11 +76,12 @@ def run_pipeline(
     # print(response)
 
 
+PROJECT = "google.com:mineral-cloud-ai"
 BUCKET_NAME = "gs://mineral-cloud-data/pipeline_staging"
+
 pipeline_root = "{}/pipeline_root".format(BUCKET_NAME)
 
 for pipeline in [
-    # pipelines.classification.automl_pipeline,
     # pipelines.classification.custom_pipeline,
     # pipelines.object_detection.automl_pipeline,
     pipelines.image_segmentation.custom_pipeline,
@@ -88,7 +89,7 @@ for pipeline in [
 ]:
     print(f"Running pipeline: {pipeline.name}")
     run_pipeline(
-        project_id="google.com:mineral-cloud-ai",
+        project_id=PROJECT,
         region="us-central1",
         pipeline_root=pipeline_root,
         pipeline=pipeline,

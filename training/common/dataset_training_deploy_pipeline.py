@@ -4,6 +4,7 @@ import dataclasses
 
 from google_cloud_pipeline_components import aiplatform as gcc_aip
 import kfp
+from kfp.dsl.io_types import Model
 from kfp.v2.dsl import (
     Dataset,
 )
@@ -201,6 +202,15 @@ class DatasetTrainingDeployPipeline(managed_dataset_pipeline.ManagedDatasetPipel
     def create_training_op(self, project: str, dataset: Dataset) -> Callable:
         pass
 
+    def create_confusion_matrix_op(self, project: str, pipeline_root: str, model: Model) -> Optional[Callable]:
+        return None
+
+    def create_classification_report_op(self, project: str, pipeline_root: str, model: Model) -> Optional[Callable]:
+        return None
+
+    def create_model_history_op(self, project: str, pipeline_root: str, model: Model) -> Optional[Callable]:
+        return None
+
     def create_pipeline(self, project: str, pipeline_root: str) -> Callable[..., Any]:
         @kfp.dsl.pipeline(name=self.name, pipeline_root=pipeline_root)
         def pipeline():
@@ -210,7 +220,17 @@ class DatasetTrainingDeployPipeline(managed_dataset_pipeline.ManagedDatasetPipel
                 project=project, pipeline_root=pipeline_root, dataset=dataset_op.output
             )
 
-            # TODO: Add optional evaluation task
+            confusion_matrix_op = self.create_confusion_matrix_op(
+                project=project, pipeline_root=pipeline_root, model=training_op.outputs["model"]
+            )
+
+            classification_report_op = self.create_classification_report_op(
+                project=project, pipeline_root=pipeline_root, model=training_op.outputs["model"]
+            )
+
+            model_history_op = self.create_model_history_op(
+                project=project, pipeline_root=pipeline_root, model=training_op.outputs["model"]
+            )
 
             if self.deploy_info:
                 deploy_op = gcc_aip.ModelDeployOp(
