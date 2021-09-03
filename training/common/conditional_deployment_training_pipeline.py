@@ -1,15 +1,14 @@
 from typing import Any, Callable, Dict, NamedTuple
 import abc
-from kfp.dsl import importer_node
 
 from training.common.managed_dataset_pipeline import ManagedDatasetPipeline
 from google_cloud_pipeline_components import aiplatform as gcc_aip
 import kfp
-from kfp.v2 import dsl
 from kfp.v2.dsl import (
     ClassificationMetrics,
     Dataset,
     Input,
+    importer,
     Metrics,
     Model,
     Output,
@@ -165,7 +164,7 @@ class ConditionalDeploymentManagedDatasetPipeline(ManagedDatasetPipeline):
         def pipeline(
             api_endpoint: str = "us-central1-aiplatform.googleapis.com",
         ):
-            importer = importer_node.importer(
+            importer = importer(
                 artifact_uri=self.managed_dataset_uri,
                 artifact_class=Dataset,
                 reimport=False,

@@ -11,6 +11,8 @@ from training.tabular.bq_training_pipelines import (
     BQQueryAutoMLPipeline,
 )
 
+import components.bigquery
+
 
 def check_if_dataset_changed(
     dataset_id: str,
@@ -26,7 +28,7 @@ def get_changed_datasets() -> Set[str]:
     return []
 
 
-def retrain_for_changed_datasets(project_id: str, region: str):
+def retrain_for_changed_datasets(project_id: str, location: str):
     # Get last modified dates
     datasets = aiplatform.Dataset.list()
 
@@ -47,7 +49,7 @@ def retrain_for_changed_datasets(project_id: str, region: str):
         if pipeline.managed_dataset_uri in changed_dataset_uris:
             run_pipeline(
                 project_id=project_id,
-                region=region,
+                location=location,
                 pipeline_root=pipeline_root,
                 pipeline=pipeline,
             )
@@ -58,25 +60,34 @@ JOB_SPEC_PATH = "package.json"
 
 def run_pipeline(
     project_id: str,
-    region: str,
+    location: str,
     pipeline_root: str,
     pipeline: Pipeline,
 ):
     compiler.Compiler().compile(
         pipeline_func=pipeline.create_pipeline(
-            project=project_id, pipeline_root=pipeline_root
+            project=project_id, pipeline_root=pipeline_root, location=location
         ),
         package_path=JOB_SPEC_PATH,
     )
 
-    api_client = AIPlatformClient(project_id=project_id, region=region)
-
-    # TODO: Replace with something that blocks and throws an error
-    response = api_client.create_run_from_job_spec(
-        JOB_SPEC_PATH,
+    job = aiplatform.PipelineJob(
+        display_name=pipeline.name,
+        template_path=JOB_SPEC_PATH,
         pipeline_root=pipeline_root,
-        parameter_values={},
+        # parameter_values={"project": project_id, "display_name": pipeline.name},
     )
+
+    job.run()
+
+    # api_client = AIPlatformClient(project_id=project_id, region=location)
+
+    # # TODO: Replace with something that blocks and throws an error
+    # response = api_client.create_run_from_job_spec(
+    #     JOB_SPEC_PATH,
+    #     pipeline_root=pipeline_root,
+    #     parameter_values={},
+    # )
 
 
 BUCKET_NAME = "gs://ivanmkc-test2/pipeline_staging"
@@ -90,17 +101,33 @@ query = (
 )
 
 for pipeline in [
-    # BQMLTrainingPipeline(name="bqml-training"),
-    BQQueryAutoMLPipeline(
-        "bq-automl",
-        query=query,
-        bq_output_table_id="python-docs-samples-tests.ivan_test.output",
+    BQMLTrainingPipeline(
+        name="bqml-training",
+        model_name="bqml_tutorial_ivan.sample_model",
+        create_mode=components.bigquery.BQMLModelCreateMode.CREATE_OR_REPLACE_MODEL,
+        select_query="""
+            SELECT
+                IF(totals.transactions IS NULL, 0, 1) AS label,
+                IFNULL(device.operatingSystem, "") AS os,
+                device.isMobile AS is_mobile,
+                IFNULL(geoNetwork.country, "") AS country,
+                IFNULL(totals.pageviews, 0) AS pageviews
+            FROM
+                `bigquery-public-data.google_analytics_sample.ga_sessions_*`
+            WHERE
+                _TABLE_SUFFIX BETWEEN '20160801' AND '20170630'
+        """,
     ),
+    # BQQueryAutoMLPipeline(
+    #     "bq-automl",
+    #     query=query,
+    #     bq_output_table_id="python-docs-samples-tests.ivan_test.output",
+    # ),
 ]:
     print(f"Running pipeline: {pipeline.name}")
     run_pipeline(
         project_id="python-docs-samples-tests",
-        region="us-central1",
+        location="us",
         pipeline_root=pipeline_root,
         pipeline=pipeline,
     )

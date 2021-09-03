@@ -19,7 +19,7 @@ from kfp.v2.dsl import Output, Dataset, component
 from pipelines_folder.pipeline import Pipeline
 from typing import Any, Callable, Optional
 from google_cloud_pipeline_components import aiplatform as gcc_aip
-from components.bigquery import bigquery
+import components.bigquery
 
 
 class BQMLTrainingPipeline(Pipeline):
@@ -27,30 +27,42 @@ class BQMLTrainingPipeline(Pipeline):
     Runs a BQ query, creates a model and generates evaluations
     """
 
-    def __init__(self, name: str):
+    def __init__(
+        self,
+        name: str,
+        model_name: str,  # e.g. bqml_tutorial.sample_model. Dataset has to exist
+        create_mode: components.bigquery.BQMLModelCreateMode,
+        select_query: str,
+    ):
         super().__init__(name=name)
 
-    def create_pipeline(self, project: str, pipeline_root: str) -> Callable[..., Any]:
+        self.create_mode = create_mode
+        self.select_query = select_query
+        self.model_name = model_name
+
+    def create_pipeline(
+        self, project: str, pipeline_root: str, location: str
+    ) -> Callable[..., Any]:
         @kfp.dsl.pipeline(name=self.name, pipeline_root=pipeline_root)
         def pipeline():
-            select_query = "TODO"
-            create_model_op = bigquery.create_model(
-                create_mode=bigquery.BQMLModelCreateMode.CREATE_MODEL.value,
-                model_name="test",
-                create_model_options="bigquery.BQMLCreateModelOptions()",
-                select_query=select_query,
+            create_model_op = components.bigquery.create_model(
+                project=project,
+                location=location,
+                create_mode_str=self.create_mode.value,
+                model_name=self.model_name,
+                create_model_options_str=components.bigquery.BQMLCreateModelOptions().to_sql(),
+                select_query=self.select_query,
             )
 
-            roc_curve_op = bigquery.create_roc_curve(
+            create_roc_curve_op = components.bigquery.create_roc_curve(
+                project=project,
+                location=location,
                 model_name=create_model_op.output,
-                table_name="",
+                table_name="test_table",
                 thresholds_str="",
             )
 
         return pipeline
-
-
-from google.cloud import aiplatform
 
 
 class BQQueryAutoMLPipeline(Pipeline):
@@ -64,10 +76,14 @@ class BQQueryAutoMLPipeline(Pipeline):
         self.query = query
         self.bq_output_table_id = bq_output_table_id
 
-    def create_pipeline(self, project: str, pipeline_root: str) -> Callable[..., Any]:
-        @kfp.dsl.pipeline(name=self.name, pipeline_root=pipeline_root)
+    def create_pipeline(
+        self, project: str, pipeline_root: str, location: str
+    ) -> Callable[..., Any]:
+        @kfp.dsl.pipeline(
+            name=self.name, pipeline_root=pipeline_root, location=location
+        )
         def pipeline():
-            query_op = bigquery.query(
+            query_op = components.bigquery.query(
                 query=self.query,
                 bq_output_table_id=self.bq_output_table_id,
                 project=project,
