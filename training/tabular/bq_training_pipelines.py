@@ -32,13 +32,15 @@ class BQMLTrainingPipeline(Pipeline):
         name: str,
         model_name: str,  # e.g. bqml_tutorial.sample_model. Dataset has to exist
         create_mode: components.bigquery.BQMLModelCreateMode,
-        select_query: str,
+        query_statement_training: str,
+        query_statement_evaluation: str,
     ):
         super().__init__(name=name)
 
         self.create_mode = create_mode
-        self.select_query = select_query
         self.model_name = model_name
+        self.query_statement_training = query_statement_training
+        self.query_statement_evaluation = query_statement_evaluation
 
     def create_pipeline(
         self, project: str, pipeline_root: str, location: str
@@ -51,15 +53,28 @@ class BQMLTrainingPipeline(Pipeline):
                 create_mode_str=self.create_mode.value,
                 model_name=self.model_name,
                 create_model_options_str=components.bigquery.BQMLCreateModelOptions().to_sql(),
-                select_query=self.select_query,
+                query_statement=self.query_statement_training,
+            )
+
+            create_evaluation_op = components.bigquery.create_evaluation(
+                project=project,
+                location=location,
+                model_name=create_model_op.output,
+                query_statement=self.query_statement_evaluation,
+            )
+
+            create_confusion_matrix_op = components.bigquery.create_confusion_matrix(
+                project=project,
+                location=location,
+                model_name=create_model_op.output,
+                query_statement=self.query_statement_evaluation,
             )
 
             create_roc_curve_op = components.bigquery.create_roc_curve(
                 project=project,
                 location=location,
                 model_name=create_model_op.output,
-                table_name="test_table",
-                thresholds_str="",
+                query_statement=self.query_statement_evaluation,
             )
 
         return pipeline
