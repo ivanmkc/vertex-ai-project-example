@@ -34,6 +34,8 @@ class BQMLTrainingPipeline(Pipeline):
         create_mode: components.bigquery.BQMLModelCreateMode,
         query_statement_training: str,
         query_statement_evaluation: str,
+        query_statement_prediction: str,
+        prediction_destination_table_id: str,
     ):
         super().__init__(name=name)
 
@@ -41,6 +43,8 @@ class BQMLTrainingPipeline(Pipeline):
         self.model_name = model_name
         self.query_statement_training = query_statement_training
         self.query_statement_evaluation = query_statement_evaluation
+        self.query_statement_prediction = query_statement_prediction
+        self.prediction_destination_table_id = prediction_destination_table_id
 
     def create_pipeline(
         self, project: str, pipeline_root: str, location: str
@@ -75,6 +79,14 @@ class BQMLTrainingPipeline(Pipeline):
                 location=location,
                 model_name=create_model_op.output,
                 query_statement=self.query_statement_evaluation,
+            )
+
+            predict_op = components.bigquery.predict(
+                project=project,
+                location=location,
+                model_name=create_model_op.output,
+                query_statement=self.query_statement_prediction,
+                destination_table_id=self.prediction_destination_table_id,
             )
 
         return pipeline
