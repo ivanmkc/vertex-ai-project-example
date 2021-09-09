@@ -11,7 +11,7 @@ from training.tabular.bq_training_pipelines import (
     BQQueryAutoMLPipeline,
 )
 
-import components.bigquery
+from components.bigquery import training
 
 
 def check_if_dataset_changed(
@@ -104,7 +104,7 @@ for pipeline in [
     BQMLTrainingPipeline(
         name="bqml-training",
         model_name="bqml_tutorial_ivan.sample_model",
-        create_mode=components.bigquery.BQMLModelCreateMode.CREATE_OR_REPLACE_MODEL,
+        create_mode=training.BQMLModelCreateMode.CREATE_OR_REPLACE_MODEL,
         query_statement_training="""
             SELECT
                 IF(totals.transactions IS NULL, "has_no_transactions", "has_transactions") AS label,
@@ -131,7 +131,6 @@ for pipeline in [
         """,
         query_statement_prediction="""
             SELECT
-                IF(totals.transactions IS NULL, "has_no_transactions", "has_transactions") AS label,
                 IFNULL(device.operatingSystem, "") AS os,
                 device.isMobile AS is_mobile,
                 IFNULL(geoNetwork.country, "") AS country,
@@ -141,7 +140,8 @@ for pipeline in [
             WHERE
                 _TABLE_SUFFIX BETWEEN '20170801' AND '20170901'        
         """,
-        prediction_destination_table_id="python-docs-samples-tests.ivanmkc_test.transactions_prediction_destination_table_id",
+        # prediction_destination_table_id="python-docs-samples-tests.ivanmkc_test.transactions_prediction_destination_table_id_3",
+        destination_csv_uri="gs://ivan-test2/output.csv",
     ),
     # BQQueryAutoMLPipeline(
     #     "bq-automl",

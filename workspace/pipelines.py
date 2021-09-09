@@ -41,6 +41,19 @@ class pipelines:
             ),
         )
 
+        automl_pipeline_car_damage = AutoMLImageManagedDatasetPipeline(
+            name="image-classification-automl-car-damage",
+            managed_dataset=datasets.classification.car_damage,
+            training_info=AutoMLImageTrainingInfo(
+                prediction_type="classification",
+                model_type="CLOUD",
+                training_fraction_split=0.6,
+                validation_fraction_split=0.2,
+                test_fraction_split=0.2,
+                budget_milli_node_hours=8000,
+            ),
+        )
+
         custom_pipeline = CustomPythonPackageManagedDatasetPipeline(
             name="image-classification-custom",
             managed_dataset=datasets.classification.flowers,

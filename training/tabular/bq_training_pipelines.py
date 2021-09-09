@@ -19,7 +19,7 @@ from kfp.v2.dsl import Output, Dataset, component
 from pipelines_folder.pipeline import Pipeline
 from typing import Any, Callable, Optional
 from google_cloud_pipeline_components import aiplatform as gcc_aip
-import components.bigquery
+from components.bigquery import training, evaluation, prediction, other
 
 
 class BQMLTrainingPipeline(Pipeline):
@@ -31,11 +31,12 @@ class BQMLTrainingPipeline(Pipeline):
         self,
         name: str,
         model_name: str,  # e.g. bqml_tutorial.sample_model. Dataset has to exist
-        create_mode: components.bigquery.BQMLModelCreateMode,
+        create_mode: training.BQMLModelCreateMode,
         query_statement_training: str,
         query_statement_evaluation: str,
         query_statement_prediction: str,
-        prediction_destination_table_id: str,
+        prediction_destination_table_id: str = "",
+        destination_csv_uri: Optional[str] = None,
     ):
         super().__init__(name=name)
 
@@ -45,49 +46,59 @@ class BQMLTrainingPipeline(Pipeline):
         self.query_statement_evaluation = query_statement_evaluation
         self.query_statement_prediction = query_statement_prediction
         self.prediction_destination_table_id = prediction_destination_table_id
+        self.destination_csv_uri = destination_csv_uri
 
     def create_pipeline(
         self, project: str, pipeline_root: str, location: str
     ) -> Callable[..., Any]:
         @kfp.dsl.pipeline(name=self.name, pipeline_root=pipeline_root)
         def pipeline():
-            create_model_op = components.bigquery.create_model(
+            create_model_op = training.create_model(
                 project=project,
                 location=location,
                 create_mode_str=self.create_mode.value,
                 model_name=self.model_name,
-                create_model_options_str=components.bigquery.BQMLCreateModelOptions().to_sql(),
-                query_statement=self.query_statement_training,
+                create_model_options_str=training.BQMLCreateModelOptions().to_sql(),
+                select_statement=self.query_statement_training,
             )
 
-            create_evaluation_op = components.bigquery.create_evaluation(
+            create_evaluation_op = evaluation.create_evaluation(
                 project=project,
                 location=location,
                 model_name=create_model_op.output,
                 query_statement=self.query_statement_evaluation,
             )
 
-            create_confusion_matrix_op = components.bigquery.create_confusion_matrix(
+            create_confusion_matrix_op = evaluation.create_confusion_matrix(
                 project=project,
                 location=location,
                 model_name=create_model_op.output,
                 query_statement=self.query_statement_evaluation,
             )
 
-            create_roc_curve_op = components.bigquery.create_roc_curve(
+            create_roc_curve_op = evaluation.create_roc_curve(
                 project=project,
                 location=location,
                 model_name=create_model_op.output,
                 query_statement=self.query_statement_evaluation,
             )
 
-            predict_op = components.bigquery.predict(
+            predict_op = prediction.predict(
                 project=project,
                 location=location,
                 model_name=create_model_op.output,
                 query_statement=self.query_statement_prediction,
                 destination_table_id=self.prediction_destination_table_id,
             )
+
+            if self.destination_csv_uri:
+                export_to_csv_op = other.export_to_csv(
+                    project=project,
+                    location=location,
+                    source_table_id=predict_op.output,
+                    source_table_location=location,
+                    destination_csv_uri=self.destination_csv_uri,
+                )
 
         return pipeline
 
