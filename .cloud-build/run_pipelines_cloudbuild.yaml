@@ -1,0 +1,19 @@
+steps:  
+  # # Show the gcloud info and check if gcloud exists
+  # - name: ${_PYTHON_IMAGE}
+  #   entrypoint: /bin/sh
+  #   args:
+  #   - -c
+  #   - 'gcloud config list'
+  # Install Python dependencies
+  - name: python
+    entrypoint: pip
+    args: ['install', '--upgrade',  '--user', '--requirement', 'requirements.txt']    
+  # Install Python dependencies and run cleanup script
+  - name: python
+    entrypoint: /bin/sh
+    args:
+    - -c
+    - 'python3 workspace/run_pipeline.py'
+    env: ["PYTHONPATH=/workspace/"]
+timeout: 86400s

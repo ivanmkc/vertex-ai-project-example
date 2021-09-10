@@ -341,7 +341,7 @@ class CustomPythonPackageManagedDatasetPipeline(DatasetTrainingDeployPipeline):
         return gcc_aip.CustomPythonPackageTrainingJobRunOp(
             display_name=self.name,
             python_package_gcs_uri=package_gcs_uri,
-            python_module=python_module_name,
+            python_module_name=python_module_name,
             container_uri=self.training_info.container_uri,
             model_serving_container_image_uri=self.training_info.model_serving_container_image_uri,
             model_serving_container_predict_route=self.training_info.model_serving_container_predict_route,
