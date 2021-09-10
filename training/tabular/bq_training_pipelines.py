@@ -31,20 +31,18 @@ class BQMLTrainingPipeline(Pipeline):
         self,
         name: str,
         model_name: str,  # e.g. bqml_tutorial.sample_model. Dataset has to exist
-        create_mode: training.BQMLModelCreateMode,
         query_statement_training: str,
-        query_statement_evaluation: str,
-        query_statement_prediction: str,
+        select_statement_evaluation: str,
+        select_statement_prediction: str,
         prediction_destination_table_id: str = "",
         destination_csv_uri: Optional[str] = None,
     ):
         super().__init__(name=name)
 
-        self.create_mode = create_mode
         self.model_name = model_name
         self.query_statement_training = query_statement_training
-        self.query_statement_evaluation = query_statement_evaluation
-        self.query_statement_prediction = query_statement_prediction
+        self.select_statement_evaluation = select_statement_evaluation
+        self.select_statement_prediction = select_statement_prediction
         self.prediction_destination_table_id = prediction_destination_table_id
         self.destination_csv_uri = destination_csv_uri
 
@@ -56,49 +54,52 @@ class BQMLTrainingPipeline(Pipeline):
             create_model_op = training.create_model(
                 project=project,
                 location=location,
-                create_mode_str=self.create_mode.value,
                 model_name=self.model_name,
-                create_model_options_str=training.BQMLCreateModelOptions().to_sql(),
-                select_statement=self.query_statement_training,
+                sql_statement=self.query_statement_training,
             )
 
             create_evaluation_op = evaluation.create_evaluation(
                 project=project,
                 location=location,
-                model_name=create_model_op.output,
-                query_statement=self.query_statement_evaluation,
+                model_name=create_model_op.outputs["model_name_output"],
+                query_statement=self.select_statement_evaluation,
             )
 
-            create_confusion_matrix_op = evaluation.create_confusion_matrix(
-                project=project,
-                location=location,
-                model_name=create_model_op.output,
-                query_statement=self.query_statement_evaluation,
-            )
+            # create_confusion_matrix_op = evaluation.create_confusion_matrix(
+            #     project=project,
+            #     location=location,
+            #     model_name=create_model_op.output,
+            #     query_statement=self.select_statement_evaluation,
+            # )
 
-            create_roc_curve_op = evaluation.create_roc_curve(
-                project=project,
-                location=location,
-                model_name=create_model_op.output,
-                query_statement=self.query_statement_evaluation,
-            )
+            # create_roc_curve_op = evaluation.create_roc_curve(
+            #     project=project,
+            #     location=location,
+            #     model_name=create_model_op.output,
+            #     query_statement=self.select_statement_evaluation,
+            # )
 
-            predict_op = prediction.predict(
-                project=project,
-                location=location,
-                model_name=create_model_op.output,
-                query_statement=self.query_statement_prediction,
-                destination_table_id=self.prediction_destination_table_id,
-            )
+            # predict_op = prediction.predict(
+            #     project=project,
+            #     location=location,
+            #     model_name=create_model_op.output,
+            #     query_statement=self.select_statement_prediction,
+            #     destination_table_id=self.prediction_destination_table_id,
+            # )
 
-            if self.destination_csv_uri:
-                export_to_csv_op = other.export_to_csv(
-                    project=project,
-                    location=location,
-                    source_table_id=predict_op.output,
-                    source_table_location=location,
-                    destination_csv_uri=self.destination_csv_uri,
-                )
+            # TODO: Model import
+            # TODO: Model export
+            # TODO: Model explain
+            # TODO: Export to table
+
+            # if self.destination_csv_uri:
+            #     export_to_csv_op = other.export_to_csv(
+            #         project=project,
+            #         location=location,
+            #         source_table_id=predict_op.output,
+            #         source_table_location=location,
+            #         destination_csv_uri=self.destination_csv_uri,
+            #     )
 
         return pipeline
 

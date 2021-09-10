@@ -104,20 +104,21 @@ for pipeline in [
     BQMLTrainingPipeline(
         name="bqml-training",
         model_name="bqml_tutorial_ivan.sample_model",
-        create_mode=training.BQMLModelCreateMode.CREATE_OR_REPLACE_MODEL,
         query_statement_training="""
+            CREATE OR REPLACE MODEL `bqml_tutorial_ivan.sample_model`
+            OPTIONS(model_type='logistic_reg') AS
             SELECT
-                IF(totals.transactions IS NULL, "has_no_transactions", "has_transactions") AS label,
-                IFNULL(device.operatingSystem, "") AS os,
-                device.isMobile AS is_mobile,
-                IFNULL(geoNetwork.country, "") AS country,
-                IFNULL(totals.pageviews, 0) AS pageviews
+            IF(totals.transactions IS NULL, 0, 1) AS label,
+            IFNULL(device.operatingSystem, "") AS os,
+            device.isMobile AS is_mobile,
+            IFNULL(geoNetwork.country, "") AS country,
+            IFNULL(totals.pageviews, 0) AS pageviews
             FROM
-                `bigquery-public-data.google_analytics_sample.ga_sessions_*`
+            `bigquery-public-data.google_analytics_sample.ga_sessions_*`
             WHERE
-                _TABLE_SUFFIX BETWEEN '20160801' AND '20170630'
+            _TABLE_SUFFIX BETWEEN '20160801' AND '20170630'
         """,
-        query_statement_evaluation="""
+        select_statement_evaluation="""
             SELECT
                 IF(totals.transactions IS NULL, "has_no_transactions", "has_transactions") AS label,
                 IFNULL(device.operatingSystem, "") AS os,
@@ -129,7 +130,7 @@ for pipeline in [
             WHERE
                 _TABLE_SUFFIX BETWEEN '20170701' AND '20170801'        
         """,
-        query_statement_prediction="""
+        select_statement_prediction="""
             SELECT
                 IFNULL(device.operatingSystem, "") AS os,
                 device.isMobile AS is_mobile,

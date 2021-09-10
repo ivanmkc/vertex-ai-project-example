@@ -1,38 +1,19 @@
-from typing import Dict, List
-from enum import Enum
+from kfp.v2.components.types.artifact_types import Artifact
 from kfp.v2.dsl import Input, Output, component, ClassificationMetrics, Metrics
-from typing import Any, Callable, Optional, Sequence, Union
-
-
-class BQMLModelCreateMode(Enum):
-    CREATE_MODEL = "CREATE MODEL"
-    CREATE_MODEL_IF_NOT_EXISTS = "CREATE MODEL IF NOT EXISTS"
-    CREATE_OR_REPLACE_MODEL = "CREATE OR REPLACE MODEL"
-
-
-class BQMLCreateModelOptions:
-    def to_sql(self) -> Dict:
-        options_dict = {"model_type": "logistic_reg"}
-
-        # TODO: Fix after https://b.corp.google.com/issues/198506675
-        create_model_options_str = ",".join(
-            [f"{key}='{value}'" for key, value in options_dict.items()]
-        )
-
-        return create_model_options_str
+from google.cloud.bigquery import Model
+import google.cloud.bigquery_v2
 
 
 @component(packages_to_install=["google-cloud-bigquery[all]"])
 def create_model(
     project: str,
-    location: str,
-    create_mode_str: str,  # BQMLModelCreateMode
-    model_name: str,  # Model name
-    create_model_options_str: str,  # Model OPTIONS, Convert to Dict after after https://b.corp.google.com/issues/198506675
-    # query_statement: str,  # SELECT query used to generate the training data
-    transform_statement: str = "",
-    select_statement: str = "",
-) -> str:
+    location: str,  # TODO: Check if service_account or CMEK are required
+    model_name: str,
+    model_name_output: Output[Artifact],
+    sql_statement: str,
+    metrics: Output[Metrics],
+    classification_metrics: Output[ClassificationMetrics],
+):  # TODO: Decide on returning BQModel or str (i.e. uri)
     """Create a BQML model
 
     https://cloud.google.com/bigquery-ml/docs/reference/standard-sql/bigqueryml-syntax-create
@@ -40,28 +21,70 @@ def create_model(
 
     from google.cloud import bigquery
 
-    # create_model_options_str = ",".join(
-    #     [f"{key}={value}" for key, value in create_model_options.items()]
-    # )
+    def process_binary_classification_metrics(
+        binary_classification_metrics: "google.cloud.bigquery_v2.types.Model.BinaryClassificationMetrics",
+        metrics: Output[Metrics],
+        classification_metrics: Output[ClassificationMetrics],
+    ):
+        print(
+            f"binary_classification_metrics.aggregate_classification_metrics: {binary_classification_metrics.aggregate_classification_metrics}"
+        )
+        print(
+            f"type(binary_classification_metrics.aggregate_classification_metrics: {binary_classification_metrics.aggregate_classification_metrics})"
+        )
+        for key, value in vars(
+            binary_classification_metrics.aggregate_classification_metrics
+        ):
+            metrics.log_metric(key, value)
 
-    create_model_options_str = create_model_options_str
+        # TODO
+        # multi_class_classification_metrics.confusion_matrix_list
+        print(
+            f"binary_classification_metrics.binary_confusion_matrix_list: {binary_classification_metrics.binary_confusion_matrix_list}"
+        )
 
-    # Build query
-    all_statements = [f"{create_mode_str} `{model_name}`"]
+    def process_multiclass_classification_metrics(
+        multi_class_classification_metrics: google.cloud.bigquery_v2.types.model.Model.MultiClassClassificationMetrics,
+        metrics: Output[Metrics],
+        classification_metrics: Output[ClassificationMetrics],
+    ):
+        for key, value in vars(
+            multi_class_classification_metrics.aggregate_classification_metrics
+        ):
+            metrics.log_metric(key, value)
 
-    if transform_statement:
-        all_statements.append(transform_statement)
-
-    if create_model_options_str:
-        all_statements.append(f"OPTIONS({create_model_options_str})")
-
-    all_statements.append(f"AS {select_statement}")
-
-    query = " ".join(all_statements)
+        # TODO
+        # multi_class_classification_metrics.confusion_matrix_list
+        print(
+            f"multi_class_classification_metrics.confusion_matrix_list: {multi_class_classification_metrics.confusion_matrix_list}"
+        )
 
     client = bigquery.Client(project=project, location=location)
 
-    query_job = client.query(query)  # API request
+    # TODO: Add labels: https://cloud.google.com/bigquery/docs/adding-labels#job-label
+    query_job = client.query(sql_statement)  # API request
     _ = query_job.result()  # Waits for query to finish
+    model = client.get_model(model_name)
 
-    return model_name
+    # TODO: Get evaluation metrics and store in MLMD
+    last_training_run = model.training_runs[-1]
+    if last_training_run:
+        # process_regression_metrics(
+        #     regression_metrics=last_training_run.evaluation_metrics.regression_metrics,
+        #     metrics=metrics,
+        #     classification_metrics=classification_metrics,
+        # )
+
+        process_binary_classification_metrics(
+            binary_classification_metrics=last_training_run.evaluation_metrics.binary_classification_metrics,
+            metrics=metrics,
+            classification_metrics=classification_metrics,
+        )
+
+        process_multiclass_classification_metrics(
+            multi_class_classification_metrics=last_training_run.evaluation_metrics.multi_class_classification_metrics,
+            metrics=metrics,
+            classification_metrics=classification_metrics,
+        )
+
+    model_name_output = model_name
