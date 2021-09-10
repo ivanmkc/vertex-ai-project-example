@@ -4,10 +4,7 @@ from pipelines_folder.pipeline import Pipeline
 import dataclasses
 from typing import Callable, Optional, Sequence, Union
 from google_cloud_pipeline_components import aiplatform as gcc_aip
-from kfp.dsl import importer_node
-from kfp.v2.dsl import (
-    Dataset,
-)
+from kfp.v2.dsl import Dataset, importer
 
 
 class ManagedDataset(abc.ABC):
@@ -21,7 +18,7 @@ class ExistingManagedDataset(ManagedDataset):
     dataset_uri: str
 
     def as_kfp_op(self, project: str) -> Callable:
-        return importer_node.importer(
+        return importer(
             artifact_uri=self.dataset_uri,
             artifact_class=Dataset,
             reimport=False,

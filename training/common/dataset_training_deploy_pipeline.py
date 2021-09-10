@@ -202,16 +202,24 @@ class DatasetTrainingDeployPipeline(managed_dataset_pipeline.ManagedDatasetPipel
     def create_training_op(self, project: str, dataset: Dataset) -> Callable:
         pass
 
-    def create_confusion_matrix_op(self, project: str, pipeline_root: str, model: Model) -> Optional[Callable]:
+    def create_confusion_matrix_op(
+        self, project: str, pipeline_root: str, model: Model
+    ) -> Optional[Callable]:
         return None
 
-    def create_classification_report_op(self, project: str, pipeline_root: str, model: Model) -> Optional[Callable]:
+    def create_classification_report_op(
+        self, project: str, pipeline_root: str, model: Model
+    ) -> Optional[Callable]:
         return None
 
-    def create_model_history_op(self, project: str, pipeline_root: str, model: Model) -> Optional[Callable]:
+    def create_model_history_op(
+        self, project: str, pipeline_root: str, model: Model
+    ) -> Optional[Callable]:
         return None
 
-    def create_pipeline(self, project: str, pipeline_root: str) -> Callable[..., Any]:
+    def create_pipeline(
+        self, project: str, location: str, pipeline_root: str
+    ) -> Callable[..., Any]:
         @kfp.dsl.pipeline(name=self.name, pipeline_root=pipeline_root)
         def pipeline():
             dataset_op = self.managed_dataset.as_kfp_op(project=project)
@@ -221,15 +229,21 @@ class DatasetTrainingDeployPipeline(managed_dataset_pipeline.ManagedDatasetPipel
             )
 
             confusion_matrix_op = self.create_confusion_matrix_op(
-                project=project, pipeline_root=pipeline_root, model=training_op.outputs["model"]
+                project=project,
+                pipeline_root=pipeline_root,
+                model=training_op.outputs["model"],
             )
 
             classification_report_op = self.create_classification_report_op(
-                project=project, pipeline_root=pipeline_root, model=training_op.outputs["model"]
+                project=project,
+                pipeline_root=pipeline_root,
+                model=training_op.outputs["model"],
             )
 
             model_history_op = self.create_model_history_op(
-                project=project, pipeline_root=pipeline_root, model=training_op.outputs["model"]
+                project=project,
+                pipeline_root=pipeline_root,
+                model=training_op.outputs["model"],
             )
 
             if self.deploy_info:

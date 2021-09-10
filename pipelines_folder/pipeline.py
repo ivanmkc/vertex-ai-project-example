@@ -19,7 +19,9 @@ class Pipeline(abc.ABC):
     #     pass
 
     @abc.abstractmethod
-    def create_pipeline(self, project: str, pipeline_root: str) -> Callable[..., Any]:
+    def create_pipeline(
+        self, project: str, location: str, pipeline_root: str
+    ) -> Callable[..., Any]:
         pass
 
     # TODO: This should not be in this class
