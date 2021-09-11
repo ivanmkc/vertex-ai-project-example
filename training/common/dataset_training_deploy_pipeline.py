@@ -6,6 +6,8 @@ from google_cloud_pipeline_components import aiplatform as gcc_aip
 import kfp
 from kfp.dsl.io_types import Model
 from kfp.v2.dsl import (
+    component,
+    Condition,
     Dataset,
 )
 import training.common.managed_dataset_pipeline as managed_dataset_pipeline
@@ -202,6 +204,41 @@ class DatasetTrainingDeployPipeline(managed_dataset_pipeline.ManagedDatasetPipel
     def create_training_op(self, project: str, dataset: Dataset) -> Callable:
         pass
 
+    def pipeline_metric_comparison_op(self, project: str, model: Model) -> Callable:
+        @component(packages_to_install=["google-cloud-storage"])
+        def pipeline_metric_comparison_op(
+            project: str,
+            model: Model,
+            metric_key: Optional[str] = None,
+            is_greater_better: bool = True,
+        ) -> bool:  # Return parameter.
+            # If no target metric key is provided, return True
+            if not metric_key:
+                return True
+
+            from google.cloud import aiplatform
+
+            # Get incumbent metric
+
+            # Compare against current metric
+
+            # https://codelabs.developers.google.com/vertex-mlmd-pipelines#6
+
+            # Get all metrics from all pipeline runs
+            metrics_for_all_pipelines = aiplatform.get_pipeline_df(pipeline=self.name)
+
+            print(f"metrics_for_all_pipelines: {metrics_for_all_pipelines}")
+
+            # Get accuracy of current pipeline run
+
+            return False
+
+        metric_key = self._get_metric_key()
+
+        return pipeline_metric_comparison_op(
+            project, model=model, metric_key=metric_key, is_greater_better=True
+        )
+
     def create_confusion_matrix_op(
         self, project: str, pipeline_root: str, model: Model
     ) -> Optional[Callable]:
@@ -246,31 +283,41 @@ class DatasetTrainingDeployPipeline(managed_dataset_pipeline.ManagedDatasetPipel
                 model=training_op.outputs["model"],
             )
 
-            if self.deploy_info:
-                deploy_op = gcc_aip.ModelDeployOp(
-                    model=training_op.outputs["model"],
-                    # endpoint=self.deploy_info.endpoint,
-                    deployed_model_display_name=self.deploy_info.deployed_model_display_name,
-                    traffic_percentage=self.deploy_info.traffic_percentage,
-                    traffic_split=self.deploy_info.traffic_split,
-                    machine_type=self.deploy_info.machine_type,
-                    min_replica_count=self.deploy_info.min_replica_count,
-                    max_replica_count=self.deploy_info.max_replica_count,
-                    accelerator_type=self.deploy_info.accelerator_type,
-                    accelerator_count=self.deploy_info.accelerator_count,
-                    service_account=self.deploy_info.service_account,
-                    explanation_metadata=self.deploy_info.explanation_metadata,
-                    explanation_parameters=self.deploy_info.explanation_parameters,
-                    metadata=self.deploy_info.metadata,
-                    encryption_spec_key_name=self.deploy_info.encryption_spec_key_name,
-                )
+            pipeline_metric_comparison_op = self.pipeline_metric_comparison_op(
+                project=project,
+                model=training_op.outputs["model"],
+            )
 
-            if self.export_info:
-                export_op = gcc_aip.ModelExportOp(
-                    model=training_op.outputs["model"],
-                    export_format_id=self.export_info.export_format_id,
-                    artifact_destination=self.export_info.artifact_destination,
-                    image_destination=self.export_info.image_destination,
-                )
+            if self.deploy_info or self.export_info:
+                with Condition(
+                    pipeline_metric_comparison_op.output == "true",
+                    name="post_train_decision",
+                ):
+                    if self.deploy_info:
+                        deploy_op = gcc_aip.ModelDeployOp(
+                            model=training_op.outputs["model"],
+                            # endpoint=self.deploy_info.endpoint,
+                            deployed_model_display_name=self.deploy_info.deployed_model_display_name,
+                            traffic_percentage=self.deploy_info.traffic_percentage,
+                            traffic_split=self.deploy_info.traffic_split,
+                            machine_type=self.deploy_info.machine_type,
+                            min_replica_count=self.deploy_info.min_replica_count,
+                            max_replica_count=self.deploy_info.max_replica_count,
+                            accelerator_type=self.deploy_info.accelerator_type,
+                            accelerator_count=self.deploy_info.accelerator_count,
+                            service_account=self.deploy_info.service_account,
+                            explanation_metadata=self.deploy_info.explanation_metadata,
+                            explanation_parameters=self.deploy_info.explanation_parameters,
+                            metadata=self.deploy_info.metadata,
+                            encryption_spec_key_name=self.deploy_info.encryption_spec_key_name,
+                        )
+
+                    if self.export_info:
+                        export_op = gcc_aip.ModelExportOp(
+                            model=training_op.outputs["model"],
+                            export_format_id=self.export_info.export_format_id,
+                            artifact_destination=self.export_info.artifact_destination,
+                            image_destination=self.export_info.image_destination,
+                        )
 
         return pipeline

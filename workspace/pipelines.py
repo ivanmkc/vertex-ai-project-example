@@ -127,7 +127,7 @@ class pipelines:
                 annotation_schema_uri=aiplatform.schema.dataset.annotation.image.segmentation,
                 args=[
                     "--epochs",
-                    "20",
+                    "1",
                     "--distribute",
                     "multi",
                 ],
@@ -136,13 +136,13 @@ class pipelines:
                 accelerator_type=TRAIN_GPU.name,
                 accelerator_count=TRAIN_NGPU,
             ),
-            # deploy_info=DeployInfo(
-            #     machine_type=DEPLOY_COMPUTE,
-            #     accelerator_count=1,
-            #     accelerator_type="NVIDIA_TESLA_K80",
-            # ),
-            # export_info=ExportInfo(
-            #     export_format_id="custom-trained",
-            #     artifact_destination="gs://mineral-cloud-data/exported_models",
-            # ),
+            deploy_info=DeployInfo(
+                machine_type=DEPLOY_COMPUTE,
+                accelerator_count=1,
+                accelerator_type="NVIDIA_TESLA_K80",
+            ),
+            export_info=ExportInfo(
+                export_format_id="custom-trained",
+                artifact_destination="gs://mineral-cloud-data/exported_models",
+            ),
         )

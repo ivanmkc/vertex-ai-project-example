@@ -4,7 +4,7 @@ from training.common.dataset_training_deploy_pipeline import (
     DeployInfo,
     ExportInfo,
 )
-from typing import Callable, List
+from typing import Callable, List, NamedTuple
 from kfp.v2.dsl import Dataset, Model
 from kfp.v2.dsl import (
     ClassificationMetrics,
@@ -88,11 +88,12 @@ class CustomPythonPackageManagedDatasetPipeline(DatasetTrainingDeployPipeline):
         self.requirements = requirements
         self.training_info = training_info
 
-
     def _get_confusion_matrix_uri(self, pipeline_root: str) -> str:
         return f"{pipeline_root}/confusion_matrix.json"
-    
-    def create_confusion_matrix_op(self, project: str, pipeline_root: str, model: Model) -> Optional[Callable]:
+
+    def create_confusion_matrix_op(
+        self, project: str, pipeline_root: str, model: Model
+    ) -> Optional[Callable]:
         @component(packages_to_install=["google-cloud-storage"])
         def confusion_matrix_op(
             project: str,
@@ -102,7 +103,9 @@ class CustomPythonPackageManagedDatasetPipeline(DatasetTrainingDeployPipeline):
         ):
             from typing import Any, Tuple
 
-            def extract_bucket_and_prefix_from_gcs_path(gcs_path: str) -> Tuple[str, Optional[str]]:
+            def extract_bucket_and_prefix_from_gcs_path(
+                gcs_path: str,
+            ) -> Tuple[str, Optional[str]]:
                 """Given a complete GCS path, return the bucket name and prefix as a tuple.
 
                 Example Usage:
@@ -133,7 +136,7 @@ class CustomPythonPackageManagedDatasetPipeline(DatasetTrainingDeployPipeline):
                 gcs_bucket = gcs_parts[0]
                 gcs_blob_prefix = None if len(gcs_parts) == 1 else gcs_parts[1]
 
-                return (gcs_bucket, gcs_blob_prefix)    
+                return (gcs_bucket, gcs_blob_prefix)
 
             def download_object(bucket_name: str, blob_name: str) -> Any:
                 from google.cloud import storage
@@ -147,33 +150,45 @@ class CustomPythonPackageManagedDatasetPipeline(DatasetTrainingDeployPipeline):
                 return json.loads(object_as_string)
 
             # Extract uri components
-            bucket_name, prefix = extract_bucket_and_prefix_from_gcs_path(confusion_matrix_uri)
-            
+            bucket_name, prefix = extract_bucket_and_prefix_from_gcs_path(
+                confusion_matrix_uri
+            )
+
             # Download confusion matrix
-            confusion_matrix = download_object(bucket_name=bucket_name, blob_name=prefix)
-            
+            confusion_matrix = download_object(
+                bucket_name=bucket_name, blob_name=prefix
+            )
+
             # Log matrix
-            classification_metrics.log_confusion_matrix(confusion_matrix["labels"], confusion_matrix["matrix"])
-        
+            classification_metrics.log_confusion_matrix(
+                confusion_matrix["labels"], confusion_matrix["matrix"]
+            )
+
         confusion_matrix_uri = self._get_confusion_matrix_uri(pipeline_root)
 
-        return confusion_matrix_op(project=project, confusion_matrix_uri=confusion_matrix_uri, model=model)
+        return confusion_matrix_op(
+            project=project, confusion_matrix_uri=confusion_matrix_uri, model=model
+        )
 
     def _get_classification_report_uri(self, pipeline_root: str) -> str:
         return f"{pipeline_root}/classification_report.json"
 
-    def create_classification_report_op(self, project: str, pipeline_root: str, model: Model) -> Optional[Callable]:
+    def create_classification_report_op(
+        self, project: str, pipeline_root: str, model: Model
+    ) -> Optional[Callable]:
         @component(packages_to_install=["google-cloud-storage", "pandas"])
         def classification_report_op(
             project: str,
             classification_report_uri: str,
             model: Input[Model],
-            mlpipeline_ui_metadata: OutputPath()
+            mlpipeline_ui_metadata: OutputPath(),
         ):
             import json
             from typing import Any, Tuple
 
-            def extract_bucket_and_prefix_from_gcs_path(gcs_path: str) -> Tuple[str, Optional[str]]:
+            def extract_bucket_and_prefix_from_gcs_path(
+                gcs_path: str,
+            ) -> Tuple[str, Optional[str]]:
                 """Given a complete GCS path, return the bucket name and prefix as a tuple.
 
                 Example Usage:
@@ -204,7 +219,7 @@ class CustomPythonPackageManagedDatasetPipeline(DatasetTrainingDeployPipeline):
                 gcs_bucket = gcs_parts[0]
                 gcs_blob_prefix = None if len(gcs_parts) == 1 else gcs_parts[1]
 
-                return (gcs_bucket, gcs_blob_prefix)    
+                return (gcs_bucket, gcs_blob_prefix)
 
             def download_object(bucket_name: str, blob_name: str) -> Any:
                 from google.cloud import storage
@@ -218,14 +233,20 @@ class CustomPythonPackageManagedDatasetPipeline(DatasetTrainingDeployPipeline):
                 return json.loads(object_as_string)
 
             # Extract uri components
-            bucket_name, prefix = extract_bucket_and_prefix_from_gcs_path(classification_report_uri)
-            
+            bucket_name, prefix = extract_bucket_and_prefix_from_gcs_path(
+                classification_report_uri
+            )
+
             # Download classification report
-            classification_report = download_object(bucket_name=bucket_name, blob_name=prefix)
-            
+            classification_report = download_object(
+                bucket_name=bucket_name, blob_name=prefix
+            )
+
             import pandas as pd
 
-            df = pd.DataFrame(columns=["key", "precision", "recall", "f1-score", "support"])
+            df = pd.DataFrame(
+                columns=["key", "precision", "recall", "f1-score", "support"]
+            )
 
             for key, value in classification_report.items():
                 if isinstance(value, Dict):
@@ -233,25 +254,33 @@ class CustomPythonPackageManagedDatasetPipeline(DatasetTrainingDeployPipeline):
                     df = df.append(value, ignore_index=True)
 
             metadata = {
-                'outputs' : [{
-                'type': 'table',
-                'storage': 'inline',
-                'format': 'csv',
-                'header': list(df.columns),
-                'source': df.to_csv()
-                }]
+                "outputs": [
+                    {
+                        "type": "table",
+                        "storage": "inline",
+                        "format": "csv",
+                        "header": list(df.columns),
+                        "source": df.to_csv(),
+                    }
+                ]
             }
 
-            with open(mlpipeline_ui_metadata, 'w') as metadata_file:
+            with open(mlpipeline_ui_metadata, "w") as metadata_file:
                 json.dump(metadata, metadata_file)
-        
+
         classification_report_uri = self._get_classification_report_uri(pipeline_root)
-        return classification_report_op(project=project, classification_report_uri=classification_report_uri, model=model)
+        return classification_report_op(
+            project=project,
+            classification_report_uri=classification_report_uri,
+            model=model,
+        )
 
     def _get_model_history_uri(self, pipeline_root: str) -> str:
         return f"{pipeline_root}/model_history.json"
-    
-    def create_model_history_op(self, project: str, pipeline_root: str, model: Model) -> Optional[Callable]:
+
+    def create_model_history_op(
+        self, project: str, pipeline_root: str, model: Model
+    ) -> Optional[Callable]:
         @component(packages_to_install=["google-cloud-storage"])
         def model_history_op(
             project: str,
@@ -262,7 +291,9 @@ class CustomPythonPackageManagedDatasetPipeline(DatasetTrainingDeployPipeline):
             import collections
             from typing import Any, Tuple
 
-            def extract_bucket_and_prefix_from_gcs_path(gcs_path: str) -> Tuple[str, Optional[str]]:
+            def extract_bucket_and_prefix_from_gcs_path(
+                gcs_path: str,
+            ) -> Tuple[str, Optional[str]]:
                 """Given a complete GCS path, return the bucket name and prefix as a tuple.
 
                 Example Usage:
@@ -293,7 +324,7 @@ class CustomPythonPackageManagedDatasetPipeline(DatasetTrainingDeployPipeline):
                 gcs_bucket = gcs_parts[0]
                 gcs_blob_prefix = None if len(gcs_parts) == 1 else gcs_parts[1]
 
-                return (gcs_bucket, gcs_blob_prefix)    
+                return (gcs_bucket, gcs_blob_prefix)
 
             def download_object(bucket_name: str, blob_name: str) -> Any:
                 from google.cloud import storage
@@ -307,21 +338,25 @@ class CustomPythonPackageManagedDatasetPipeline(DatasetTrainingDeployPipeline):
                 return json.loads(object_as_string)
 
             # Extract uri components
-            bucket_name, prefix = extract_bucket_and_prefix_from_gcs_path(model_history_uri)
-            
+            bucket_name, prefix = extract_bucket_and_prefix_from_gcs_path(
+                model_history_uri
+            )
+
             # Download confusion matrix
             model_history = download_object(bucket_name=bucket_name, blob_name=prefix)
-            
+
             # Log matrix
             for name, value in model_history.items():
                 if not isinstance(value, collections.Sequence):
                     metrics.log_metric(name, value)
                 else:
                     metrics.log_metric(name, value[-1])
-        
+
         model_history_uri = self._get_model_history_uri(pipeline_root)
 
-        return model_history_op(project=project, model_history_uri=model_history_uri, model=model)
+        return model_history_op(
+            project=project, model_history_uri=model_history_uri, model=model
+        )
 
     def _create_training_op_for_package(
         self,
@@ -334,9 +369,24 @@ class CustomPythonPackageManagedDatasetPipeline(DatasetTrainingDeployPipeline):
         training_args = self.training_info.args
 
         # TODO: Check if training task supports this arg
-        training_args.extend(["--confusion_matrix_destination_uri", self._get_confusion_matrix_uri(pipeline_root)])
-        training_args.extend(["--classification_report_destination_uri", self._get_classification_report_uri(pipeline_root)])
-        training_args.extend(["--model_history_destination_uri", self._get_model_history_uri(pipeline_root)])
+        training_args.extend(
+            [
+                "--confusion_matrix_destination_uri",
+                self._get_confusion_matrix_uri(pipeline_root),
+            ]
+        )
+        training_args.extend(
+            [
+                "--classification_report_destination_uri",
+                self._get_classification_report_uri(pipeline_root),
+            ]
+        )
+        training_args.extend(
+            [
+                "--model_history_destination_uri",
+                self._get_model_history_uri(pipeline_root),
+            ]
+        )
 
         return gcc_aip.CustomPythonPackageTrainingJobRunOp(
             display_name=self.name,
@@ -410,3 +460,6 @@ class CustomPythonPackageManagedDatasetPipeline(DatasetTrainingDeployPipeline):
             package_gcs_uri=package_gcs_uri,
             python_module_name=PYTHON_MODULE_NAME,
         )
+
+    def _get_metric_key(self) -> Optional[str]:
+        return "fpr"
