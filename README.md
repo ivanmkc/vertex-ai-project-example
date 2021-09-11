@@ -33,7 +33,7 @@ The file to determine what commands are run are in the `.cloud-build/run_pipelin
 
 To run this on the cloud, run the following command:
 ```
-gcloud builds submit --config=.cloud-build/run_pipelines_cloudbuild.yaml
+gcloud builds submit --config=.cloud-build/run_pipelines_cloudbuild.yaml --substitutions=_GCP_BUCKET_NAME="gs://MY_BUCKET_NAME/pipeline_staging"
 ```
 
 This will error out as you haven't given the correct permissions to the service account yet.
@@ -67,7 +67,7 @@ gcloud projects add-iam-policy-binding MY_PROJECT \
 5. Now submit the build again. This time it should work.
 
 ```
-gcloud builds submit --config=.cloud-build/run_pipelines_cloudbuild.yaml
+gcloud builds submit --config=.cloud-build/run_pipelines_cloudbuild.yaml --substitutions=_GCP_BUCKET_NAME="gs://MY_BUCKET_NAME/pipeline_staging"
 ```
 
 #### (Optional) Set up triggers
