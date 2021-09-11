@@ -1,10 +1,4 @@
 steps:  
-  # # Show the gcloud info and check if gcloud exists
-  # - name: ${_PYTHON_IMAGE}
-  #   entrypoint: /bin/sh
-  #   args:
-  #   - -c
-  #   - 'gcloud config list'
   # Install Python dependencies
   - name: python
     entrypoint: pip
@@ -15,5 +9,8 @@ steps:
     args:
     - -c
     - 'python3 workspace/run_pipeline.py'
-    env: ["PYTHONPATH=/workspace/"]
+    env: 
+    - 'PYTHONPATH=/workspace/'
+    - 'GCP_PROJECT_ID=$PROJECT_ID'
+    - 'GCP_BUCKET_NAME=${_GCP_BUCKET_NAME}'
 timeout: 86400s
