@@ -74,12 +74,14 @@ class CustomPythonPackageManagedDatasetPipeline(DatasetTrainingDeployPipeline):
         training_script_path: str,
         requirements: List[str],
         training_info: CustomPythonPackageTrainingInfo,
+        metric_key_for_comparison: Optional[str] = None,
         deploy_info: Optional[DeployInfo] = None,
         export_info: Optional[ExportInfo] = None,
     ):
         super().__init__(
             name=name,
             managed_dataset=managed_dataset,
+            metric_key_for_comparison=metric_key_for_comparison,
             deploy_info=deploy_info,
             export_info=export_info,
         )
@@ -460,6 +462,3 @@ class CustomPythonPackageManagedDatasetPipeline(DatasetTrainingDeployPipeline):
             package_gcs_uri=package_gcs_uri,
             python_module_name=PYTHON_MODULE_NAME,
         )
-
-    def _get_metric_key(self) -> Optional[str]:
-        return "fpr"

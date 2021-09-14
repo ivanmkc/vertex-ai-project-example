@@ -193,10 +193,12 @@ class DatasetTrainingDeployPipeline(managed_dataset_pipeline.ManagedDatasetPipel
         self,
         name: str,
         managed_dataset: managed_dataset_pipeline.ManagedDataset,
+        metric_key_for_comparison: Optional[str],
         deploy_info: Optional[DeployInfo],
         export_info: Optional[ExportInfo],
     ):
         super().__init__(name=name, managed_dataset=managed_dataset)
+        self.metric_key_for_comparison = metric_key_for_comparison
         self.deploy_info = deploy_info
         self.export_info = export_info
 
@@ -204,7 +206,12 @@ class DatasetTrainingDeployPipeline(managed_dataset_pipeline.ManagedDatasetPipel
     def create_training_op(self, project: str, dataset: Dataset) -> Callable:
         pass
 
-    def pipeline_metric_comparison_op(self, project: str, model: Model) -> Callable:
+    def get_metric_key_for_comparison(self) -> Optional[str]:
+        return self.metric_key_for_comparison
+
+    def create_pipeline_metric_comparison_op(
+        self, project: str, model: Model
+    ) -> Callable:
         @component(packages_to_install=["google-cloud-storage"])
         def pipeline_metric_comparison_op(
             project: str,
@@ -233,7 +240,7 @@ class DatasetTrainingDeployPipeline(managed_dataset_pipeline.ManagedDatasetPipel
 
             return False
 
-        metric_key = self._get_metric_key()
+        metric_key = self.get_metric_key_for_comparison()
 
         return pipeline_metric_comparison_op(
             project, model=model, metric_key=metric_key, is_greater_better=True
@@ -283,7 +290,7 @@ class DatasetTrainingDeployPipeline(managed_dataset_pipeline.ManagedDatasetPipel
                 model=training_op.outputs["model"],
             )
 
-            pipeline_metric_comparison_op = self.pipeline_metric_comparison_op(
+            pipeline_metric_comparison_op = self.create_pipeline_metric_comparison_op(
                 project=project,
                 model=training_op.outputs["model"],
             )
