@@ -119,7 +119,7 @@ def bqml_create_evaluation_op(
         "google-cloud-pipeline-components",
     ]
 )
-def create_confusion_matrix(
+def bqml_create_confusion_matrix(
     project: str,
     location: str,
     model: str,  # TODO: Change to Input[BQMLModel]
@@ -226,7 +226,7 @@ def create_confusion_matrix(
         "google-cloud-pipeline-components",
     ]
 )
-def create_roc_curve(
+def bqml_create_roc_curve(
     project: str,
     location: str,
     model: str,  # TODO: Change to Input[BQMLModel]
@@ -323,35 +323,3 @@ def create_roc_curve(
 
     output = namedtuple("Outputs", ["gcp_resources"])
     return output(query_job_resources_serialized)
-
-
-@component(
-    packages_to_install=[
-        "google-cloud-bigquery[all]",
-        "protobuf",
-        "google-cloud-pipeline-components",
-    ]
-)
-def query(
-    # An input parameter of type string.
-    query: str,
-    bq_output_table_id: str,
-    project: str,
-) -> str:
-    """Query
-
-    https://cloud.google.com/bigquery/docs/writing-results?hl=en
-    """
-
-    from google.cloud import bigquery
-
-    client = bigquery.Client(project=project)
-
-    job_config = bigquery.QueryJobConfig(destination=bq_output_table_id)
-
-    query_job = client.query(query, job_config=job_config)  # API request
-    query_job.result()  # Waits for query to finish
-
-    # TODO: Save job ID in metadata
-
-    return bq_output_table_id

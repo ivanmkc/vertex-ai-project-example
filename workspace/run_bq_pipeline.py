@@ -8,7 +8,6 @@ from typing import List, Set
 
 from training.tabular.bq_training_pipelines import (
     BQMLTrainingPipeline,
-    BQQueryAutoMLPipeline,
 )
 
 from components.bigquery import training
@@ -103,8 +102,7 @@ query = (
 for pipeline in [
     BQMLTrainingPipeline(
         name="bqml-training",
-        model_name="bqml_tutorial_ivan.sample_model3",
-        query_statement_training="""
+        query_training="""
             CREATE OR REPLACE MODEL `bqml_tutorial_ivan.sample_model3`
             OPTIONS(model_type='logistic_reg') AS
             SELECT

@@ -234,9 +234,7 @@ def bqml_create_model_op(
 
     # Write the job proto to output
     query_job_resource.resource_type = "BigQueryJob"
-    query_job_resource.resource_uri = (
-        query_job.self_link
-    )  # Every GCP resource has a resource URI: https://bigquery.googleapis.com/bigquery/v2/projects/{projectId}/jobs/{jobId}
+    query_job_resource.resource_uri = query_job.self_link
 
     query_job_resources_serialized = json_format.MessageToJson(query_job_resources)
 

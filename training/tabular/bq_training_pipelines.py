@@ -52,7 +52,7 @@ class BQMLTrainingPipeline(Pipeline):
             create_model_op = training.bqml_create_model_op(
                 project=project,
                 location=location,
-                query=self.query_statement_training,
+                query=self.query_training,
             )
 
             create_evaluation_op = evaluation.bqml_create_evaluation_op(
@@ -62,27 +62,27 @@ class BQMLTrainingPipeline(Pipeline):
                 query_statement=self.query_statement_evaluation,
             )
 
-            create_confusion_matrix_op = evaluation.create_confusion_matrix(
+            create_confusion_matrix_op = evaluation.bqml_create_confusion_matrix(
                 project=project,
                 location=location,
                 model=create_model_op.outputs["model"],
                 query_statement=self.query_statement_evaluation,
             )
 
-            create_roc_curve_op = evaluation.create_roc_curve(
+            create_roc_curve_op = evaluation.bqml_create_roc_curve(
                 project=project,
                 location=location,
                 model=create_model_op.outputs["model"],
                 query_statement=self.query_statement_evaluation,
             )
 
-            # predict_op = prediction.predict(
-            #     project=project,
-            #     location=location,
-            #     model_name=create_model_op.output,
-            #     query_statement=self.query_statement_prediction,
-            #     destination_table_id=self.prediction_destination_table_id,
-            # )
+            predict_op = prediction.bqml_predict(
+                project=project,
+                location=location,
+                model=create_model_op.outputs["model"],
+                query_statement=self.query_statement_prediction,
+                destination_table_id=self.prediction_destination_table_id,
+            )
 
             # TODO: Model import
             # TODO: Model export
