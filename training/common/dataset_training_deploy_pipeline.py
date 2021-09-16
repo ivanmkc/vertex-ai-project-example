@@ -184,6 +184,15 @@ class DeployInfo:
     encryption_spec_key_name: Optional[str] = None
 
 
+@component(packages_to_install=["google-cloud-storage"])
+def test_op(
+    project: str,
+    model: Model,
+    metric_key: Optional[str] = None,
+) -> bool:  # Return parameter.
+    pass
+
+
 class DatasetTrainingDeployPipeline(managed_dataset_pipeline.ManagedDatasetPipeline):
     """
     Create a new Vertex AI managed dataset and trains an arbitrary AutoML or custom model
@@ -261,6 +270,14 @@ class DatasetTrainingDeployPipeline(managed_dataset_pipeline.ManagedDatasetPipel
     ) -> Optional[Callable]:
         return None
 
+    # def create_test_op(
+    #     self,
+    #     project: str,
+    #     metric_key: Optional[str] = None,
+    # ):
+
+    # return test_op(project=project, metric_key=metric_key)
+
     def create_pipeline(
         self, project: str, location: str, pipeline_root: str
     ) -> Callable[..., Any]:
@@ -290,41 +307,45 @@ class DatasetTrainingDeployPipeline(managed_dataset_pipeline.ManagedDatasetPipel
                 model=training_op.outputs["model"],
             )
 
+            test_op_asdf = test_op(
+                project="project", model=training_op.outputs["model"]
+            )
+
             pipeline_metric_comparison_op = self.create_pipeline_metric_comparison_op(
                 project=project,
                 model=training_op.outputs["model"],
             )
 
-            if self.deploy_info or self.export_info:
-                with Condition(
-                    pipeline_metric_comparison_op.output == "true",
-                    name="post_train_decision",
-                ):
-                    if self.deploy_info:
-                        deploy_op = gcc_aip.ModelDeployOp(
-                            model=training_op.outputs["model"],
-                            # endpoint=self.deploy_info.endpoint,
-                            deployed_model_display_name=self.deploy_info.deployed_model_display_name,
-                            traffic_percentage=self.deploy_info.traffic_percentage,
-                            traffic_split=self.deploy_info.traffic_split,
-                            machine_type=self.deploy_info.machine_type,
-                            min_replica_count=self.deploy_info.min_replica_count,
-                            max_replica_count=self.deploy_info.max_replica_count,
-                            accelerator_type=self.deploy_info.accelerator_type,
-                            accelerator_count=self.deploy_info.accelerator_count,
-                            service_account=self.deploy_info.service_account,
-                            explanation_metadata=self.deploy_info.explanation_metadata,
-                            explanation_parameters=self.deploy_info.explanation_parameters,
-                            metadata=self.deploy_info.metadata,
-                            encryption_spec_key_name=self.deploy_info.encryption_spec_key_name,
-                        )
+            # if self.deploy_info or self.export_info:
+            #     with Condition(
+            #         pipeline_metric_comparison_op.output == "true",
+            #         name="post_train_decision",
+            #     ):
+            #         if self.deploy_info:
+            #             deploy_op = gcc_aip.ModelDeployOp(
+            #                 model=training_op.outputs["model"],
+            #                 # endpoint=self.deploy_info.endpoint,
+            #                 deployed_model_display_name=self.deploy_info.deployed_model_display_name,
+            #                 traffic_percentage=self.deploy_info.traffic_percentage,
+            #                 traffic_split=self.deploy_info.traffic_split,
+            #                 machine_type=self.deploy_info.machine_type,
+            #                 min_replica_count=self.deploy_info.min_replica_count,
+            #                 max_replica_count=self.deploy_info.max_replica_count,
+            #                 accelerator_type=self.deploy_info.accelerator_type,
+            #                 accelerator_count=self.deploy_info.accelerator_count,
+            #                 service_account=self.deploy_info.service_account,
+            #                 explanation_metadata=self.deploy_info.explanation_metadata,
+            #                 explanation_parameters=self.deploy_info.explanation_parameters,
+            #                 metadata=self.deploy_info.metadata,
+            #                 encryption_spec_key_name=self.deploy_info.encryption_spec_key_name,
+            #             )
 
-                    if self.export_info:
-                        export_op = gcc_aip.ModelExportOp(
-                            model=training_op.outputs["model"],
-                            export_format_id=self.export_info.export_format_id,
-                            artifact_destination=self.export_info.artifact_destination,
-                            image_destination=self.export_info.image_destination,
-                        )
+            #         if self.export_info:
+            #             export_op = gcc_aip.ModelExportOp(
+            #                 model=training_op.outputs["model"],
+            #                 export_format_id=self.export_info.export_format_id,
+            #                 artifact_destination=self.export_info.artifact_destination,
+            #                 image_destination=self.export_info.image_destination,
+            #             )
 
         return pipeline

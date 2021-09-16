@@ -38,12 +38,14 @@ class AutoMLImageManagedDatasetPipeline(DatasetTrainingDeployPipeline):
         name: str,
         managed_dataset: managed_dataset_pipeline.ManagedDataset,
         training_info: AutoMLImageTrainingInfo,
+        metric_key_for_comparison: Optional[str] = None,
         deploy_info: Optional[DeployInfo] = None,
         export_info: Optional[ExportInfo] = None,
     ):
         super().__init__(
             name=name,
             managed_dataset=managed_dataset,
+            metric_key_for_comparison=metric_key_for_comparison,
             deploy_info=deploy_info,
             export_info=export_info,
         )

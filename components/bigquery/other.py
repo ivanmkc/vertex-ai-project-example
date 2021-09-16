@@ -3,16 +3,21 @@ from kfp.v2.dsl import component
 from typing import Optional
 
 
-@component(packages_to_install=["google-cloud-bigquery[all]"])
+@component(
+    packages_to_install=[
+        "google-cloud-bigquery[all]",
+        "google-cloud-pipeline-components",
+    ]
+)
 def export_to_csv(
     project: str,
     location: str,
     source_table_id: str,
-    source_table_location: str,  # Optional
     destination_csv_uri: str,
+    source_table_location: Optional[str] = None,  # Optiona
     # query_statement: str = "",  # Optional: Blocked by b/198790426
 ) -> str:
-    """Get prediction
+    """Export BigQuery table to CSV at GCS destination
 
     https://cloud.google.com/bigquery-ml/docs/reference/standard-sql/bigqueryml-syntax-predict
     """

@@ -103,9 +103,9 @@ query = (
 for pipeline in [
     BQMLTrainingPipeline(
         name="bqml-training",
-        model_name="bqml_tutorial_ivan.sample_model",
+        model_name="bqml_tutorial_ivan.sample_model3",
         query_statement_training="""
-            CREATE OR REPLACE MODEL `bqml_tutorial_ivan.sample_model`
+            CREATE OR REPLACE MODEL `bqml_tutorial_ivan.sample_model3`
             OPTIONS(model_type='logistic_reg') AS
             SELECT
             IF(totals.transactions IS NULL, 0, 1) AS label,
@@ -118,9 +118,9 @@ for pipeline in [
             WHERE
             _TABLE_SUFFIX BETWEEN '20160801' AND '20170630'
         """,
-        select_statement_evaluation="""
+        query_statement_evaluation="""
             SELECT
-                IF(totals.transactions IS NULL, "has_no_transactions", "has_transactions") AS label,
+                IF(totals.transactions IS NULL,  0, 1) AS label,
                 IFNULL(device.operatingSystem, "") AS os,
                 device.isMobile AS is_mobile,
                 IFNULL(geoNetwork.country, "") AS country,
@@ -130,7 +130,7 @@ for pipeline in [
             WHERE
                 _TABLE_SUFFIX BETWEEN '20170701' AND '20170801'        
         """,
-        select_statement_prediction="""
+        query_statement_prediction="""
             SELECT
                 IFNULL(device.operatingSystem, "") AS os,
                 device.isMobile AS is_mobile,

@@ -20,11 +20,7 @@ class Pipeline(abc.ABC):
 
     @abc.abstractmethod
     def create_pipeline(
-<<<<<<< HEAD
         self, project: str, location: str, pipeline_root: str
-=======
-        self, project: str, pipeline_root: str, location: str
->>>>>>> 4560eff (Many fixes to enable BQML create model op)
     ) -> Callable[..., Any]:
         pass
 

@@ -1,19 +1,24 @@
 from typing import Dict, List
 from kfp.v2.dsl import component
-from typing import Optional
+from typing import Optional, NamedTuple
 
 
-@component(packages_to_install=["google-cloud-bigquery[all]"])
+@component(
+    packages_to_install=[
+        "google-cloud-bigquery[all]",
+        "google-cloud-pipeline-components",
+    ]
+)
 def predict(
     project: str,
     location: str,
     model_name: str,  # Model name
-    query_statement: str = "",  # Optional: Blocked by b/198790426
-    table_name: str = "",  # Optional: Blocked by b/198790426
-    threshold: Optional[float] = None,  # Optional: Blocked by b/198790426
-    keep_original_columns: Optional[bool] = None,  # Optional: Blocked by b/198790426
-    destination_table_id: str = "",  # Optional: Blocked by b/198790426
-) -> str:
+    query_statement: Optional[str] = None,
+    table_name: Optional[str] = None,
+    threshold: Optional[float] = None,
+    keep_original_columns: Optional[bool] = None,
+    destination_table_id: Optional[str] = None,
+) -> NamedTuple("Outputs", [("gcp_resources", str)]):
     """Get prediction
 
     https://cloud.google.com/bigquery-ml/docs/reference/standard-sql/bigqueryml-syntax-predict

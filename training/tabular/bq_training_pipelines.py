@@ -30,19 +30,17 @@ class BQMLTrainingPipeline(Pipeline):
     def __init__(
         self,
         name: str,
-        model_name: str,  # e.g. bqml_tutorial.sample_model. Dataset has to exist
-        query_statement_training: str,
-        select_statement_evaluation: str,
-        select_statement_prediction: str,
+        query_training: str,  # Full query
+        query_statement_evaluation: str,
+        query_statement_prediction: str,
         prediction_destination_table_id: str = "",
         destination_csv_uri: Optional[str] = None,
     ):
         super().__init__(name=name)
 
-        self.model_name = model_name
-        self.query_statement_training = query_statement_training
-        self.select_statement_evaluation = select_statement_evaluation
-        self.select_statement_prediction = select_statement_prediction
+        self.query_training = query_training
+        self.query_statement_evaluation = query_statement_evaluation
+        self.query_statement_prediction = query_statement_prediction
         self.prediction_destination_table_id = prediction_destination_table_id
         self.destination_csv_uri = destination_csv_uri
 
@@ -51,39 +49,38 @@ class BQMLTrainingPipeline(Pipeline):
     ) -> Callable[..., Any]:
         @kfp.dsl.pipeline(name=self.name, pipeline_root=pipeline_root)
         def pipeline():
-            create_model_op = training.create_model(
+            create_model_op = training.bqml_create_model_op(
                 project=project,
                 location=location,
-                model_name=self.model_name,
-                sql_statement=self.query_statement_training,
+                query=self.query_statement_training,
             )
 
-            create_evaluation_op = evaluation.create_evaluation(
+            create_evaluation_op = evaluation.bqml_create_evaluation_op(
                 project=project,
                 location=location,
-                model_name=create_model_op.outputs["model_name_output"],
-                query_statement=self.select_statement_evaluation,
+                model=create_model_op.outputs["model"],
+                query_statement=self.query_statement_evaluation,
             )
 
-            # create_confusion_matrix_op = evaluation.create_confusion_matrix(
-            #     project=project,
-            #     location=location,
-            #     model_name=create_model_op.output,
-            #     query_statement=self.select_statement_evaluation,
-            # )
+            create_confusion_matrix_op = evaluation.create_confusion_matrix(
+                project=project,
+                location=location,
+                model=create_model_op.outputs["model"],
+                query_statement=self.query_statement_evaluation,
+            )
 
-            # create_roc_curve_op = evaluation.create_roc_curve(
-            #     project=project,
-            #     location=location,
-            #     model_name=create_model_op.output,
-            #     query_statement=self.select_statement_evaluation,
-            # )
+            create_roc_curve_op = evaluation.create_roc_curve(
+                project=project,
+                location=location,
+                model=create_model_op.outputs["model"],
+                query_statement=self.query_statement_evaluation,
+            )
 
             # predict_op = prediction.predict(
             #     project=project,
             #     location=location,
             #     model_name=create_model_op.output,
-            #     query_statement=self.select_statement_prediction,
+            #     query_statement=self.query_statement_prediction,
             #     destination_table_id=self.prediction_destination_table_id,
             # )
 
