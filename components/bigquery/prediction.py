@@ -13,11 +13,12 @@ def bqml_predict(
     project: str,
     location: str,
     model: str,  # TODO: Change to Input[BQMLModel
+    # destination_table: Output[BQTable],
     query_statement: Optional[str] = None,
     table_name: Optional[str] = None,
     threshold: Optional[float] = None,
     keep_original_columns: Optional[bool] = None,
-    destination_table_id: Optional[str] = None,  # TODO: Change to Output[BQTable],
+    destination_table_id: Optional[str] = None,
 ) -> NamedTuple("Outputs", [("gcp_resources", str), ("destination_table_id", str)]):
     """Get prediction
 

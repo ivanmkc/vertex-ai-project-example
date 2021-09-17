@@ -89,14 +89,14 @@ class BQMLTrainingPipeline(Pipeline):
             # TODO: Model explain
             # TODO: Export to table
 
-            # if self.destination_csv_uri:
-            #     export_to_csv_op = other.export_to_csv(
-            #         project=project,
-            #         location=location,
-            #         source_table_id=predict_op.output,
-            #         source_table_location=location,
-            #         destination_csv_uri=self.destination_csv_uri,
-            #     )
+            if self.destination_csv_uri:
+                export_to_csv_op = other.export_to_csv(
+                    project=project,
+                    location=location,
+                    source_table_id=predict_op.outputs["destination_table_id"],
+                    source_table_location=location,
+                    destination_csv_uri=self.destination_csv_uri,
+                )
 
         return pipeline
 
