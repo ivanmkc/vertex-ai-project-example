@@ -43,6 +43,7 @@ if not BUCKET_NAME:
 
 pipeline_root = "{}/pipeline_root".format(BUCKET_NAME)
 
+# TODO: Run in parallel
 for pipeline in [
     # pipelines.classification.custom_pipeline,
     pipelines.object_detection.custom_pipeline,

@@ -14,12 +14,11 @@
 from typing import Dict, List
 
 import kfp
-from kfp.components import OutputPath
-from kfp.v2.dsl import Output, Dataset, component
 from pipelines_folder.pipeline import Pipeline
-from typing import Any, Callable, Optional
+from typing import Any, Callable
 from google_cloud_pipeline_components import aiplatform as gcc_aip
-from components.bigquery import training, evaluation, prediction, other
+from components.bigquery.bqml import training, evaluation, prediction
+from components.bigquery import data_processing
 
 
 class BQMLTrainingPipeline(Pipeline):
@@ -114,7 +113,7 @@ class BQQueryAutoMLPipeline(Pipeline):
     ) -> Callable[..., Any]:
         @kfp.dsl.pipeline(name=self.name, pipeline_root=pipeline_root)
         def pipeline():
-            query_op = other.bq_query(
+            query_op = data_processing.bq_query(
                 project=project,
                 location=location,
                 query=self.query,
