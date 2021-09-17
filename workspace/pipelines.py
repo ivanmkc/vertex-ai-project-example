@@ -204,13 +204,11 @@ class pipelines:
             WHERE
                 _TABLE_SUFFIX BETWEEN '20170801' AND '20170901'        
         """,
-            # prediction_destination_table_id="python-docs-samples-tests.ivanmkc_test.transactions_prediction_destination_table_id_3",
-            # destination_csv_uri="gs://ivan-test2/output.csv",
         )
 
         bq_automl = BQQueryAutoMLPipeline(
             name="bq-automl",
-            query="SELECT * FROM `bq://bigquery-public-data.ml_datasets.penguins`",
+            query="SELECT * FROM `bigquery-public-data.ml_datasets.penguins`",
             optimization_prediction_type="classification",
-            target_column="species",            
+            target_column="species",
         )

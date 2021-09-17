@@ -37,6 +37,12 @@ def bq_query(
     query_job = client.query(query, job_config=job_config)  # API request
     query_job.result()  # Waits for query to finish
 
+    # Extract destination table
+    destination = query_job.destination
+    output_destination_table_id = (
+        f"{destination.project}.{destination.dataset_id}.{destination.table_id}"
+    )
+
     # Instantiate GCPResources Proto
     query_job_resources = GcpResources()
     query_job_resource = query_job_resources.resources.add()
@@ -50,7 +56,7 @@ def bq_query(
     from collections import namedtuple
 
     output = namedtuple("Outputs", ["gcp_resources", "destination_table_id"])
-    return output(query_job_resources_serialized, destination_table_id)
+    return output(query_job_resources_serialized, output_destination_table_id)
 
 
 @component(
