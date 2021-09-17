@@ -103,10 +103,18 @@ class BQQueryAutoMLPipeline(Pipeline):
     Runs a BQ query, creates a model and generates evaluations
     """
 
-    def __init__(self, name: str, query: str):
+    def __init__(
+        self,
+        name: str,
+        query: str,
+        optimization_prediction_type: str,
+        target_column: str,
+    ):
         super().__init__(name=name)
 
         self.query = query
+        self.optimization_prediction_type = optimization_prediction_type
+        self.target_column = target_column
 
     def create_pipeline(
         self, project: str, pipeline_root: str, location: str
@@ -128,9 +136,9 @@ class BQQueryAutoMLPipeline(Pipeline):
 
             training_op = gcc_aip.AutoMLTabularTrainingJobRunOp(
                 display_name=self.name,
-                optimization_prediction_type="classification",
+                optimization_prediction_type=self.optimization_prediction_type,
                 dataset=dataset_op.output,
-                target_column="info",
+                target_column=self.target_column,
                 project=project,
             )
 

@@ -36,7 +36,7 @@ pipeline_root = "{}/pipeline_root".format(BUCKET_NAME)
 
 # TODO: Run in parallel
 for pipeline in [
-    pipelines.tabular.bqml_custom_predict,
+    # pipelines.tabular.bqml_custom_predict,
     pipelines.tabular.bq_automl,
 ]:
     print(f"Running pipeline: {pipeline.name}")

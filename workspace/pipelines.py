@@ -210,9 +210,7 @@ class pipelines:
 
         bq_automl = BQQueryAutoMLPipeline(
             name="bq-automl",
-            query=(
-                "SELECT name FROM `bigquery-public-data.usa_names.usa_1910_2013` "
-                "WHERE state = `TX` "
-                "LIMIT 100"
-            ),
+            query="SELECT * FROM `bq://bigquery-public-data.ml_datasets.penguins`",
+            optimization_prediction_type="classification",
+            target_column="species",            
         )
