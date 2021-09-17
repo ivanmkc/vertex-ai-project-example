@@ -3,6 +3,10 @@ from training.image.automl_image_training_pipeline import (
     AutoMLImageManagedDatasetPipeline,
 )
 
+from training.tabular.bq_training_pipelines import (
+    BQMLTrainingPipeline,
+    BQQueryAutoMLPipeline,
+)
 from training.common.custom_python_package_training_pipeline import (
     CustomPythonPackageTrainingInfo,
     CustomPythonPackageManagedDatasetPipeline,
@@ -157,5 +161,60 @@ class pipelines:
             export_info=ExportInfo(
                 export_format_id="custom-trained",
                 artifact_destination="gs://mineral-cloud-data/exported_models",
+            ),
+        )
+
+    class tabular:
+        bqml_custom_predict = (
+            BQMLTrainingPipeline(
+                name="bqml-training",
+                query_training="""
+            CREATE OR REPLACE MODEL `bqml_tutorial_ivan.sample_model3`
+            OPTIONS(model_type='logistic_reg') AS
+            SELECT
+            IF(totals.transactions IS NULL, 0, 1) AS label,
+            IFNULL(device.operatingSystem, "") AS os,
+            device.isMobile AS is_mobile,
+            IFNULL(geoNetwork.country, "") AS country,
+            IFNULL(totals.pageviews, 0) AS pageviews
+            FROM
+            `bigquery-public-data.google_analytics_sample.ga_sessions_*`
+            WHERE
+            _TABLE_SUFFIX BETWEEN '20160801' AND '20170630'
+        """,
+                query_statement_evaluation="""
+            SELECT
+                IF(totals.transactions IS NULL,  0, 1) AS label,
+                IFNULL(device.operatingSystem, "") AS os,
+                device.isMobile AS is_mobile,
+                IFNULL(geoNetwork.country, "") AS country,
+                IFNULL(totals.pageviews, 0) AS pageviews
+            FROM
+                `bigquery-public-data.google_analytics_sample.ga_sessions_*`
+            WHERE
+                _TABLE_SUFFIX BETWEEN '20170701' AND '20170801'        
+        """,
+                query_statement_prediction="""
+            SELECT
+                IFNULL(device.operatingSystem, "") AS os,
+                device.isMobile AS is_mobile,
+                IFNULL(geoNetwork.country, "") AS country,
+                IFNULL(totals.pageviews, 0) AS pageviews
+            FROM
+                `bigquery-public-data.google_analytics_sample.ga_sessions_*`
+            WHERE
+                _TABLE_SUFFIX BETWEEN '20170801' AND '20170901'        
+        """,
+                # prediction_destination_table_id="python-docs-samples-tests.ivanmkc_test.transactions_prediction_destination_table_id_3",
+                # destination_csv_uri="gs://ivan-test2/output.csv",
+            ),
+        )
+
+        bq_automl = BQQueryAutoMLPipeline(
+            name="bq-automl",
+            query=(
+                "SELECT name FROM `bigquery-public-data.usa_names.usa_1910_2013` "
+                "WHERE state = `TX` "
+                "LIMIT 100"
             ),
         )

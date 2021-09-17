@@ -34,7 +34,6 @@ class BQMLTrainingPipeline(Pipeline):
         query_statement_evaluation: str,
         query_statement_prediction: str,
         prediction_destination_table_id: str = "",
-        destination_csv_uri: Optional[str] = None,
     ):
         super().__init__(name=name)
 
@@ -42,7 +41,6 @@ class BQMLTrainingPipeline(Pipeline):
         self.query_statement_evaluation = query_statement_evaluation
         self.query_statement_prediction = query_statement_prediction
         self.prediction_destination_table_id = prediction_destination_table_id
-        self.destination_csv_uri = destination_csv_uri
 
     def create_pipeline(
         self, project: str, pipeline_root: str, location: str
@@ -89,14 +87,14 @@ class BQMLTrainingPipeline(Pipeline):
             # TODO: Model explain
             # TODO: Export to table
 
-            if self.destination_csv_uri:
-                export_to_csv_op = other.export_to_csv(
-                    project=project,
-                    location=location,
-                    source_table_id=predict_op.outputs["destination_table_id"],
-                    source_table_location=location,
-                    destination_csv_uri=self.destination_csv_uri,
-                )
+            # if self.destination_csv_uri:
+            #     export_to_csv_op = other.export_to_csv(
+            #         project=project,
+            #         location=location,
+            #         source_table_id=predict_op.outputs["destination_table_id"],
+            #         source_table_location=location,
+            #         destination_csv_uri=self.destination_csv_uri,
+            #     )
 
         return pipeline
 
@@ -106,29 +104,26 @@ class BQQueryAutoMLPipeline(Pipeline):
     Runs a BQ query, creates a model and generates evaluations
     """
 
-    def __init__(self, name: str, query: str, bq_output_table_id: str):
+    def __init__(self, name: str, query: str):
         super().__init__(name=name)
 
         self.query = query
-        self.bq_output_table_id = bq_output_table_id
 
     def create_pipeline(
         self, project: str, pipeline_root: str, location: str
     ) -> Callable[..., Any]:
-        @kfp.dsl.pipeline(
-            name=self.name, pipeline_root=pipeline_root, location=location
-        )
+        @kfp.dsl.pipeline(name=self.name, pipeline_root=pipeline_root)
         def pipeline():
-            query_op = components.bigquery.query(
-                query=self.query,
-                bq_output_table_id=self.bq_output_table_id,
+            query_op = other.bq_query(
                 project=project,
+                location=location,
+                query=self.query,
             )
 
             dataset_op = gcc_aip.TabularDatasetCreateOp(
                 display_name=self.name,
                 gcs_source=None,
-                bq_source=query_op.output,
+                bq_source=query_op.outputs["destination_table_id"],
                 project=project,
             )
 
