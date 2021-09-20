@@ -211,4 +211,5 @@ class pipelines:
             query="SELECT * FROM `bigquery-public-data.ml_datasets.penguins`",
             optimization_prediction_type="classification",
             target_column="species",
+            source_table_location="us",
         )

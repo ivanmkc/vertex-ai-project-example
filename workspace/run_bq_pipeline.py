@@ -42,7 +42,7 @@ for pipeline in [
     print(f"Running pipeline: {pipeline.name}")
     run_pipeline(
         project_id="python-docs-samples-tests",
-        location="us",
+        location="us-east1",
         pipeline_root=pipeline_root,
         pipeline=pipeline,
     )

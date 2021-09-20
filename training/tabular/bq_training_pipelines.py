@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import kfp
 from pipelines_folder.pipeline import Pipeline
@@ -132,6 +132,7 @@ class BQQueryAutoMLPipeline(Pipeline):
                 gcs_source=None,
                 bq_source=query_op.outputs["destination_table_id"],
                 project=project,
+                location=location,
             )
 
             training_op = gcc_aip.AutoMLTabularTrainingJobRunOp(
@@ -140,6 +141,7 @@ class BQQueryAutoMLPipeline(Pipeline):
                 dataset=dataset_op.output,
                 target_column=self.target_column,
                 project=project,
+                location=location,
             )
 
         return pipeline
