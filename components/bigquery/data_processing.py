@@ -66,11 +66,12 @@ def bq_query(
         "google-cloud-pipeline-components",
     ]
 )
-def export_to_csv(
+def export(
     project: str,
     location: str,
     source_table_id: str,
-    destination_csv_uri: str,
+    destination_uri: str,
+    destinationFormat: Optional[str],
     source_table_location: Optional[str] = None,
 ) -> NamedTuple("Outputs", [("gcp_resources", str), ("model", str)]):
     """Export BigQuery table to CSV at GCS destination
@@ -86,11 +87,14 @@ def export_to_csv(
 
     client = bigquery.Client(project=project, location=location)
 
+    job_config = bigquery.ExtractJobConfig(destination_format=destinationFormat)
+
     extract_job = client.extract_table(
         source=source_table_id,
-        destination_uris=destination_csv_uri,
+        destination_uris=destination_uri,
         # Location must match that of the source table.
         location=source_table_location,
+        job_config=job_config,
     )  # API request
     extract_job.result()  # Waits for job to complete.
 
@@ -106,5 +110,5 @@ def export_to_csv(
 
     from collections import namedtuple
 
-    output = namedtuple("Outputs", ["gcp_resources", "destination_csv_uri"])
-    return output(query_job_resources_serialized, destination_csv_uri)
+    output = namedtuple("Outputs", ["gcp_resources", "destination_uri"])
+    return output(query_job_resources_serialized, destination_uri)

@@ -46,3 +46,12 @@ class datasets:
             import_schema_uri=aiplatform.schema.dataset.ioformat.image.image_segmentation,
             data_item_labels=None,
         )
+
+        anthropod_taxonomy = NewImageDataset(
+            display_name="Anthropods",
+            gcs_source=[
+                "gs://mlops-object-detection/ArTaxOr/ArTaxOr.csv",
+            ],
+            import_schema_uri=aiplatform.schema.dataset.ioformat.image.image_segmentation,
+            data_item_labels=None,
+        )

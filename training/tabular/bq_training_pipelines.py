@@ -42,7 +42,7 @@ class BQMLTrainingPipeline(Pipeline):
         self.prediction_destination_table_id = prediction_destination_table_id
 
     def create_pipeline(
-        self, project: str, pipeline_root: str, location: str
+        self, project: str, pipeline_root: str, pipeline_run_name: str, location: str
     ) -> Callable[..., Any]:
         @kfp.dsl.pipeline(name=self.name, pipeline_root=pipeline_root)
         def pipeline():
@@ -109,17 +109,15 @@ class BQQueryAutoMLPipeline(Pipeline):
         query: str,
         optimization_prediction_type: str,
         target_column: str,
-        source_table_location: Optional[str] = None,
     ):
         super().__init__(name=name)
 
         self.query = query
         self.optimization_prediction_type = optimization_prediction_type
         self.target_column = target_column
-        self.source_table_location = source_table_location
 
     def create_pipeline(
-        self, project: str, pipeline_root: str, location: str
+        self, project: str, pipeline_root: str, pipeline_run_name: str, location: str
     ) -> Callable[..., Any]:
         @kfp.dsl.pipeline(name=self.name, pipeline_root=pipeline_root)
         def pipeline():

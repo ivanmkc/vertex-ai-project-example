@@ -5,11 +5,7 @@ import dataclasses
 from google_cloud_pipeline_components import aiplatform as gcc_aip
 import kfp
 from kfp.dsl.io_types import Model
-from kfp.v2.dsl import (
-    component,
-    Condition,
-    Dataset,
-)
+from kfp.v2.dsl import component, importer, Condition, Dataset, Input
 import training.common.managed_dataset_pipeline as managed_dataset_pipeline
 from google.cloud.aiplatform import explain
 
@@ -184,15 +180,6 @@ class DeployInfo:
     encryption_spec_key_name: Optional[str] = None
 
 
-@component(packages_to_install=["google-cloud-storage"])
-def test_op(
-    project: str,
-    model: Model,
-    metric_key: Optional[str] = None,
-) -> bool:  # Return parameter.
-    pass
-
-
 class DatasetTrainingDeployPipeline(managed_dataset_pipeline.ManagedDatasetPipeline):
     """
     Create a new Vertex AI managed dataset and trains an arbitrary AutoML or custom model
@@ -219,40 +206,99 @@ class DatasetTrainingDeployPipeline(managed_dataset_pipeline.ManagedDatasetPipel
         return self.metric_key_for_comparison
 
     def create_pipeline_metric_comparison_op(
-        self, project: str, model: Model
+        self, project: str, location: str, pipeline_run_name: str, model: Model
     ) -> Callable:
-        @component(packages_to_install=["google-cloud-storage"])
+        @component(
+            packages_to_install=[
+                "google-cloud-storage",
+                "google-cloud-aiplatform",
+                "pandas",
+            ]
+        )
         def pipeline_metric_comparison_op(
             project: str,
-            model: Model,
+            location: str,
+            pipeline_run_name: str,
+            pipeline_name: str,
+            model: Input[Model],
+            pipeline_job_id_injected: str = "{{$.pipeline_job_uuid}}",
             metric_key: Optional[str] = None,
             is_greater_better: bool = True,
         ) -> bool:  # Return parameter.
+            print(f"metric_key={metric_key}")
+            print(f"pipeline_job_id_injected={pipeline_job_id_injected}")
             # If no target metric key is provided, return True
             if not metric_key:
                 return True
 
             from google.cloud import aiplatform
+            import pandas as pd
 
-            # Get incumbent metric
+            pd.set_option("max_columns", None)  # show all cols
+            pd.set_option("max_colwidth", None)  # show full width of showing cols
+            pd.set_option(
+                "expand_frame_repr", False
+            )  # print cols side by side as it's supposed to be
 
-            # Compare against current metric
-
-            # https://codelabs.developers.google.com/vertex-mlmd-pipelines#6
+            aiplatform.init(project=project, location=location)
 
             # Get all metrics from all pipeline runs
-            metrics_for_all_pipelines = aiplatform.get_pipeline_df(pipeline=self.name)
+            df_metrics = aiplatform.get_pipeline_df(pipeline_name)
 
-            print(f"metrics_for_all_pipelines: {metrics_for_all_pipelines}")
+            # Check if pipeline_run_name is even in the data
+            if pipeline_run_name not in df_metrics["run_name"].values:
+                raise RuntimeError(
+                    f"Current run id ({pipeline_run_name}) not found in metrics."
+                )
 
-            # Get accuracy of current pipeline run
+            # Get current metric
+            print(f"pipeline_run_name: {pipeline_run_name}")
+            # print(f"metrics_for_all_pipelines: {df_metrics}")
 
-            return False
+            metrics_for_current_run = df_metrics[
+                df_metrics["run_name"] == pipeline_run_name
+            ]
+            metric_value_for_current_run = metrics_for_current_run.to_dict("records")[
+                0
+            ].get(metric_key)
+
+            print(f"metric_value_for_current_run: {metric_value_for_current_run}")
+
+            if pd.isna(metric_value_for_current_run):
+                raise RuntimeError(f"Metric value is not available.")
+
+            # Get row for max metric
+            if is_greater_better:
+                metrics_for_best_run = df_metrics[
+                    df_metrics[metric_key] == df_metrics[metric_key].max()
+                ]
+
+                metric_value_for_best_run = metrics_for_best_run.to_dict("records")[
+                    0
+                ].get(metric_key)
+
+                return metric_value_for_current_run >= metric_value_for_best_run
+            else:
+                metrics_for_best_run = df_metrics[
+                    df_metrics[metric_key] == df_metrics[metric_key].min()
+                ]
+
+                metric_value_for_best_run = metrics_for_best_run.to_dict("records")[
+                    0
+                ].get(metric_key)
+
+                return metric_value_for_current_run <= metric_value_for_best_run
 
         metric_key = self.get_metric_key_for_comparison()
 
         return pipeline_metric_comparison_op(
-            project, model=model, metric_key=metric_key, is_greater_better=True
+            project=project,
+            location=location,
+            pipeline_run_name=pipeline_run_name,
+            pipeline_name=self.name,
+            model=model,
+            metric_key=metric_key,
+            is_greater_better=True,
         )
 
     def create_confusion_matrix_op(
@@ -270,82 +316,77 @@ class DatasetTrainingDeployPipeline(managed_dataset_pipeline.ManagedDatasetPipel
     ) -> Optional[Callable]:
         return None
 
-    # def create_test_op(
-    #     self,
-    #     project: str,
-    #     metric_key: Optional[str] = None,
-    # ):
-
-    # return test_op(project=project, metric_key=metric_key)
-
     def create_pipeline(
-        self, project: str, location: str, pipeline_root: str
+        self, project: str, location: str, pipeline_run_name: str, pipeline_root: str
     ) -> Callable[..., Any]:
         @kfp.dsl.pipeline(name=self.name, pipeline_root=pipeline_root)
         def pipeline():
             dataset_op = self.managed_dataset.as_kfp_op(project=project)
 
-            training_op = self.create_training_op(
-                project=project, pipeline_root=pipeline_root, dataset=dataset_op.output
+            # training_op = self.create_training_op(
+            #     project=project, pipeline_root=pipeline_root, dataset=dataset_op.output
+            # )
+            training_op = importer(
+                artifact_uri="807754018322382848",
+                artifact_class=Model,
+                reimport=False,
             )
 
             confusion_matrix_op = self.create_confusion_matrix_op(
                 project=project,
                 pipeline_root=pipeline_root,
-                model=training_op.outputs["model"],
+                model=training_op.output,
             )
 
             classification_report_op = self.create_classification_report_op(
                 project=project,
                 pipeline_root=pipeline_root,
-                model=training_op.outputs["model"],
+                model=training_op.output,
             )
 
             model_history_op = self.create_model_history_op(
                 project=project,
                 pipeline_root=pipeline_root,
-                model=training_op.outputs["model"],
-            )
-
-            test_op_asdf = test_op(
-                project="project", model=training_op.outputs["model"]
+                model=training_op.output,
             )
 
             pipeline_metric_comparison_op = self.create_pipeline_metric_comparison_op(
                 project=project,
-                model=training_op.outputs["model"],
-            )
+                location=location,
+                pipeline_run_name=pipeline_run_name,
+                model=training_op.output,
+            ).after(confusion_matrix_op, classification_report_op, model_history_op)
 
-            # if self.deploy_info or self.export_info:
-            #     with Condition(
-            #         pipeline_metric_comparison_op.output == "true",
-            #         name="post_train_decision",
-            #     ):
-            #         if self.deploy_info:
-            #             deploy_op = gcc_aip.ModelDeployOp(
-            #                 model=training_op.outputs["model"],
-            #                 # endpoint=self.deploy_info.endpoint,
-            #                 deployed_model_display_name=self.deploy_info.deployed_model_display_name,
-            #                 traffic_percentage=self.deploy_info.traffic_percentage,
-            #                 traffic_split=self.deploy_info.traffic_split,
-            #                 machine_type=self.deploy_info.machine_type,
-            #                 min_replica_count=self.deploy_info.min_replica_count,
-            #                 max_replica_count=self.deploy_info.max_replica_count,
-            #                 accelerator_type=self.deploy_info.accelerator_type,
-            #                 accelerator_count=self.deploy_info.accelerator_count,
-            #                 service_account=self.deploy_info.service_account,
-            #                 explanation_metadata=self.deploy_info.explanation_metadata,
-            #                 explanation_parameters=self.deploy_info.explanation_parameters,
-            #                 metadata=self.deploy_info.metadata,
-            #                 encryption_spec_key_name=self.deploy_info.encryption_spec_key_name,
-            #             )
+            if self.deploy_info or self.export_info:
+                with Condition(
+                    pipeline_metric_comparison_op.output == "true",
+                    name="post_train_decision",
+                ):
+                    if self.deploy_info:
+                        deploy_op = gcc_aip.ModelDeployOp(
+                            model=training_op.output,
+                            # endpoint=self.deploy_info.endpoint,
+                            deployed_model_display_name=self.deploy_info.deployed_model_display_name,
+                            traffic_percentage=self.deploy_info.traffic_percentage,
+                            traffic_split=self.deploy_info.traffic_split,
+                            machine_type=self.deploy_info.machine_type,
+                            min_replica_count=self.deploy_info.min_replica_count,
+                            max_replica_count=self.deploy_info.max_replica_count,
+                            accelerator_type=self.deploy_info.accelerator_type,
+                            accelerator_count=self.deploy_info.accelerator_count,
+                            service_account=self.deploy_info.service_account,
+                            explanation_metadata=self.deploy_info.explanation_metadata,
+                            explanation_parameters=self.deploy_info.explanation_parameters,
+                            metadata=self.deploy_info.metadata,
+                            encryption_spec_key_name=self.deploy_info.encryption_spec_key_name,
+                        )
 
-            #         if self.export_info:
-            #             export_op = gcc_aip.ModelExportOp(
-            #                 model=training_op.outputs["model"],
-            #                 export_format_id=self.export_info.export_format_id,
-            #                 artifact_destination=self.export_info.artifact_destination,
-            #                 image_destination=self.export_info.image_destination,
-            #             )
+                    if self.export_info:
+                        export_op = gcc_aip.ModelExportOp(
+                            model=training_op.output,
+                            export_format_id=self.export_info.export_format_id,
+                            artifact_destination=self.export_info.artifact_destination,
+                            image_destination=self.export_info.image_destination,
+                        )
 
         return pipeline

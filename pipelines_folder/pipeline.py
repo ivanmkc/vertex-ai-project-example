@@ -20,7 +20,7 @@ class Pipeline(abc.ABC):
 
     @abc.abstractmethod
     def create_pipeline(
-        self, project: str, location: str, pipeline_root: str
+        self, project: str, location: str, pipeline_run_name: str, pipeline_root: str
     ) -> Callable[..., Any]:
         pass
 

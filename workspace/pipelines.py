@@ -153,6 +153,7 @@ class pipelines:
                 accelerator_type=TRAIN_GPU.name,
                 accelerator_count=TRAIN_NGPU,
             ),
+            metric_key_for_comparison="metric.val_accuracy",
             deploy_info=DeployInfo(
                 machine_type=DEPLOY_COMPUTE,
                 accelerator_count=1,
