@@ -61,6 +61,12 @@ def parse_args():
         type=str,
         help="Destination uri for model history JSON file",
     ),
+    parser.add_argument(
+        "--model_history_test_destination_uri",
+        default=None,
+        type=str,
+        help="Destination uri for model history for test JSON file",
+    ),
     # parser.add_argument(
     #     "--test-run",
     #     default=False,
@@ -261,9 +267,9 @@ def load_image(datapoint):
     return input_image, input_mask
 
 
-train_images, validation_images = (
+train_images, validation_images, test_images = (
     dataset.map(load_image, num_parallel_calls=tf.data.AUTOTUNE)
-    for dataset in [dataset_train, dataset_validation]
+    for dataset in [dataset_train, dataset_validation, dataset_test]
 )
 
 
@@ -292,6 +298,7 @@ train_batches = (
 )
 
 validation_batches = validation_images.batch(GLOBAL_BATCH_SIZE)
+test_batches = test_images.batch(GLOBAL_BATCH_SIZE)
 
 
 def unet_model(output_channels: int):
@@ -349,105 +356,115 @@ STEPS_PER_EPOCH = TRAIN_LENGTH // GLOBAL_BATCH_SIZE
 
 NUM_OUTPUT_CLASSES = len(color_labels) + 1  # Add one for background color of 0
 VALIDATION_STEPS = len(validation_instances) // GLOBAL_BATCH_SIZE
+
+
 class IoU(tf.keras.metrics.Metric):
-  """Customized IoU metrics based on tf.keras.metrics.MeanIoU class."""
+    """Customized IoU metrics based on tf.keras.metrics.MeanIoU class."""
 
-  def __init__(self, num_classes, name='IoU', dtype=None):
-    super(IoU, self).__init__(name=name, dtype=dtype)
-    self.num_classes = num_classes
-    # Variable to accumulate the predictions in the confusion matrix.
-    self.total_cm = self.add_weight(
-        'total_confusion_matrix',
-        shape=(num_classes, num_classes),
-        initializer=tf.compat.v1.zeros_initializer)
+    def __init__(self, num_classes, name="IoU", dtype=None):
+        super(IoU, self).__init__(name=name, dtype=dtype)
+        self.num_classes = num_classes
+        # Variable to accumulate the predictions in the confusion matrix.
+        self.total_cm = self.add_weight(
+            "total_confusion_matrix",
+            shape=(num_classes, num_classes),
+            initializer=tf.compat.v1.zeros_initializer,
+        )
 
-  def update_state(self, y_true, y_pred, sample_weight=None):
-    """Accumulates the confusion matrix statistics.
+    def update_state(self, y_true, y_pred, sample_weight=None):
+        """Accumulates the confusion matrix statistics.
 
-    Args:
-      y_true: The ground truth values.
-      y_pred: The predicted values.
-      sample_weight: Optional weighting of each example. Defaults to 1. Can be a
-        `Tensor` whose rank is either 0, or the same rank as `y_true`, and must
-        be broadcastable to `y_true`.
-    Returns:
-      Update op.
-    """
+        Args:
+          y_true: The ground truth values.
+          y_pred: The predicted values.
+          sample_weight: Optional weighting of each example. Defaults to 1. Can be a
+            `Tensor` whose rank is either 0, or the same rank as `y_true`, and must
+            be broadcastable to `y_true`.
+        Returns:
+          Update op.
+        """
 
-    y_true = tf.cast(y_true, self._dtype)
-    y_pred = tf.cast(y_pred, self._dtype)
-    # Convert probability output to label output.
-    if len(y_pred.shape) > 3 and y_pred.shape[3] > 1:
-      # has hot-encoding channel: squeeze hot-encoding channel
-      y_true = tf.argmax(y_true, axis=3, output_type=tf.int32)
-      y_pred = tf.argmax(y_pred, axis=3, output_type=tf.int32)
-    else:
-      # no hot-encoding channel, binary classes
-      y_true = tf.cast(y_true > 0.5, dtype=tf.int32)
-      y_pred = tf.cast(y_pred > 0.5, dtype=tf.int32)
-    # Flatten the input if its rank > 1.
-    if y_pred.shape.ndims > 1:
-      y_pred = tf.reshape(y_pred, [-1])
+        y_true = tf.cast(y_true, self._dtype)
+        y_pred = tf.cast(y_pred, self._dtype)
+        # Convert probability output to label output.
+        if len(y_pred.shape) > 3 and y_pred.shape[3] > 1:
+            # has hot-encoding channel: squeeze hot-encoding channel
+            y_true = tf.argmax(y_true, axis=3, output_type=tf.int32)
+            y_pred = tf.argmax(y_pred, axis=3, output_type=tf.int32)
+        else:
+            # no hot-encoding channel, binary classes
+            y_true = tf.cast(y_true > 0.5, dtype=tf.int32)
+            y_pred = tf.cast(y_pred > 0.5, dtype=tf.int32)
+        # Flatten the input if its rank > 1.
+        if y_pred.shape.ndims > 1:
+            y_pred = tf.reshape(y_pred, [-1])
 
-    if y_true.shape.ndims > 1:
-      y_true = tf.reshape(y_true, [-1])
+        if y_true.shape.ndims > 1:
+            y_true = tf.reshape(y_true, [-1])
 
-    if sample_weight is not None:
-      sample_weight = tf.cast(sample_weight, self._dtype)
-      if sample_weight.shape.ndims > 1:
-        sample_weight = tf.reshape(sample_weight, [-1])
+        if sample_weight is not None:
+            sample_weight = tf.cast(sample_weight, self._dtype)
+            if sample_weight.shape.ndims > 1:
+                sample_weight = tf.reshape(sample_weight, [-1])
 
-    # Accumulate the prediction to current confusion matrix.
-    current_cm = tf.math.confusion_matrix(
-        y_true,
-        y_pred,
-        self.num_classes,
-        weights=sample_weight,
-        dtype=self._dtype)
-    return self.total_cm.assign_add(current_cm)
+        # Accumulate the prediction to current confusion matrix.
+        current_cm = tf.math.confusion_matrix(
+            y_true, y_pred, self.num_classes, weights=sample_weight, dtype=self._dtype
+        )
+        return self.total_cm.assign_add(current_cm)
 
-  def result(self):
-    """Compute the mean intersection-over-union via the confusion matrix."""
-    sum_over_row = tf.cast(   # true_positives + false_positives
-        tf.reduce_sum(self.total_cm, axis=0), dtype=self._dtype)
-    sum_over_col = tf.cast(   # true_positives + false_negatives
-        tf.reduce_sum(self.total_cm, axis=1), dtype=self._dtype)
-    intersection = tf.cast(   # true_positives
-        tf.linalg.tensor_diag_part(self.total_cm), dtype=self._dtype)
-    union = sum_over_row + sum_over_col - intersection
-    # The mean is only computed over classes that appear in the
-    # label or prediction tensor. If the denominator is 0, we need to
-    # ignore the class.
-    num_valid_entries = tf.reduce_sum(
-        tf.cast(tf.not_equal(union, 0), dtype=self._dtype))
+    def result(self):
+        """Compute the mean intersection-over-union via the confusion matrix."""
+        sum_over_row = tf.cast(  # true_positives + false_positives
+            tf.reduce_sum(self.total_cm, axis=0), dtype=self._dtype
+        )
+        sum_over_col = tf.cast(  # true_positives + false_negatives
+            tf.reduce_sum(self.total_cm, axis=1), dtype=self._dtype
+        )
+        intersection = tf.cast(  # true_positives
+            tf.linalg.tensor_diag_part(self.total_cm), dtype=self._dtype
+        )
+        union = sum_over_row + sum_over_col - intersection
+        # The mean is only computed over classes that appear in the
+        # label or prediction tensor. If the denominator is 0, we need to
+        # ignore the class.
+        num_valid_entries = tf.reduce_sum(
+            tf.cast(tf.not_equal(union, 0), dtype=self._dtype)
+        )
 
-    iou = tf.math.divide_no_nan(intersection, union)
+        iou = tf.math.divide_no_nan(intersection, union)
 
-    return tf.math.divide_no_nan(
-        tf.reduce_sum(iou, name='mean_iou'), num_valid_entries)
+        return tf.math.divide_no_nan(
+            tf.reduce_sum(iou, name="mean_iou"), num_valid_entries
+        )
 
-  def reset_states(self):
-      tf.keras.backend.set_value(self.total_cm, np.zeros((self.num_classes, self.num_classes)))
+    def reset_states(self):
+        tf.keras.backend.set_value(
+            self.total_cm, np.zeros((self.num_classes, self.num_classes))
+        )
 
-  def get_config(self):
-    config = {'num_classes': self.num_classes}
-    base_config = super(IoU, self).get_config()
-    return dict(list(base_config.items()) + list(config.items()))
+    def get_config(self):
+        config = {"num_classes": self.num_classes}
+        base_config = super(IoU, self).get_config()
+        return dict(list(base_config.items()) + list(config.items()))
+
 
 with strategy.scope():
     model = unet_model(output_channels=NUM_OUTPUT_CLASSES)
     model.compile(
         optimizer="adam",
         loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
-        metrics = ['accuracy', IoU(num_classes=NUM_OUTPUT_CLASSES)]
+        metrics=["accuracy", IoU(num_classes=NUM_OUTPUT_CLASSES)],
     )
 
 # Train the model
 model_history = model.fit(
     train_batches,
     epochs=args.epochs,
-    steps_per_epoch=STEPS_PER_EPOCH,
-    validation_steps=VALIDATION_STEPS,
+    # steps_per_epoch=STEPS_PER_EPOCH,
+    # validation_steps=VALIDATION_STEPS,
+    steps_per_epoch=10,
+    validation_steps=10,
     validation_data=validation_batches,
     callbacks=[],
 )
@@ -456,6 +473,7 @@ model_dir = os.getenv("AIP_MODEL_DIR")
 
 if model_dir:
     model.save(model_dir)
+
 
 def upload_blob(bucket_name, source_file_name, destination_blob_name):
     """Uploads a file to the bucket."""
@@ -469,6 +487,7 @@ def upload_blob(bucket_name, source_file_name, destination_blob_name):
     destination_file_name = os.path.join("gs://", bucket_name, destination_blob_name)
 
     return destination_file_name
+
 
 def extract_bucket_and_prefix_from_gcs_path(gcs_path: str) -> Tuple[str, Optional[str]]:
     """Given a complete GCS path, return the bucket name and prefix as a tuple.
@@ -501,7 +520,8 @@ def extract_bucket_and_prefix_from_gcs_path(gcs_path: str) -> Tuple[str, Optiona
     gcs_bucket = gcs_parts[0]
     gcs_blob_prefix = None if len(gcs_parts) == 1 else gcs_parts[1]
 
-    return (gcs_bucket, gcs_blob_prefix)    
+    return (gcs_bucket, gcs_blob_prefix)
+
 
 if args.confusion_matrix_destination_uri or args.classification_report_destination_uri:
     indices = []
@@ -566,43 +586,82 @@ if args.confusion_matrix_destination_uri or args.classification_report_destinati
     if args.confusion_matrix_destination_uri:
         # Save confusion_matrix
         CONFUSION_MATRIX_LOCAL_FILE = "confusion_matrix.json"
-        with open(CONFUSION_MATRIX_LOCAL_FILE, 'w') as outfile:
+        with open(CONFUSION_MATRIX_LOCAL_FILE, "w") as outfile:
             import json
-            json.dump(
-                {
-                    "labels": labels,
-                    "matrix": confusion_matrix
-                }, 
-            outfile)
+
+            json.dump({"labels": labels, "matrix": confusion_matrix}, outfile)
 
         # Upload to bucket
-        bucket, prefix = extract_bucket_and_prefix_from_gcs_path(args.confusion_matrix_destination_uri)
-        upload_blob(bucket_name=bucket, source_file_name=CONFUSION_MATRIX_LOCAL_FILE, destination_blob_name=prefix)
+        bucket, prefix = extract_bucket_and_prefix_from_gcs_path(
+            args.confusion_matrix_destination_uri
+        )
+        upload_blob(
+            bucket_name=bucket,
+            source_file_name=CONFUSION_MATRIX_LOCAL_FILE,
+            destination_blob_name=prefix,
+        )
 
         print(f"Confusion matrix uploaded to : {args.confusion_matrix_destination_uri}")
 
     if args.classification_report_destination_uri:
         # Save confusion_matrix
         LOCAL_FILE = "evaluation.json"
-        with open(LOCAL_FILE, 'w') as outfile:
+        with open(LOCAL_FILE, "w") as outfile:
             import json
+
             json.dump(classification_report, outfile)
 
         # Upload to bucket
-        bucket, prefix = extract_bucket_and_prefix_from_gcs_path(args.classification_report_destination_uri)
-        upload_blob(bucket_name=bucket, source_file_name=LOCAL_FILE, destination_blob_name=prefix)
+        bucket, prefix = extract_bucket_and_prefix_from_gcs_path(
+            args.classification_report_destination_uri
+        )
+        upload_blob(
+            bucket_name=bucket,
+            source_file_name=LOCAL_FILE,
+            destination_blob_name=prefix,
+        )
 
-        print(f"Classification report uploaded to : {args.classification_report_destination_uri}")
+        print(
+            f"Classification report uploaded to : {args.classification_report_destination_uri}"
+        )
 
-if args.model_history_destination_uri:    
+if args.model_history_destination_uri:
     # Save
     LOCAL_FILE = "model_history.json"
-    with open(LOCAL_FILE, 'w') as outfile:
+    with open(LOCAL_FILE, "w") as outfile:
         import json
+
         json.dump(model_history.history, outfile)
 
     # Upload to bucket
-    bucket, prefix = extract_bucket_and_prefix_from_gcs_path(args.model_history_destination_uri)
-    upload_blob(bucket_name=bucket, source_file_name=LOCAL_FILE, destination_blob_name=prefix)
+    bucket, prefix = extract_bucket_and_prefix_from_gcs_path(
+        args.model_history_destination_uri
+    )
+    upload_blob(
+        bucket_name=bucket, source_file_name=LOCAL_FILE, destination_blob_name=prefix
+    )
 
     print(f"Model history uploaded to : {args.model_history_destination_uri}")
+
+if args.model_history_test_destination_uri:
+    model_history_test = model.evaluate(
+        test_batches,
+        callbacks=[],
+    )
+
+    # Save
+    LOCAL_FILE = "model_history_test.json"
+    with open(LOCAL_FILE, "w") as outfile:
+        import json
+
+        json.dump(model_history_test.history, outfile)
+
+    # Upload to bucket
+    bucket, prefix = extract_bucket_and_prefix_from_gcs_path(
+        args.model_history_test_destination_uri
+    )
+    upload_blob(
+        bucket_name=bucket, source_file_name=LOCAL_FILE, destination_blob_name=prefix
+    )
+
+    print(f"Model history uploaded to : {args.model_history_test_destination_uri}")

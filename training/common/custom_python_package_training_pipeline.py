@@ -280,6 +280,9 @@ class CustomPythonPackageManagedDatasetPipeline(DatasetTrainingDeployPipeline):
     def _get_model_history_uri(self, pipeline_root: str) -> str:
         return f"{pipeline_root}/model_history.json"
 
+    def _get_model_history_test_uri(self, pipeline_root: str) -> str:
+        return f"{pipeline_root}/model_history_test.json"
+
     def create_model_history_op(
         self, project: str, pipeline_root: str, model: Model
     ) -> Optional[Callable]:
@@ -375,18 +378,12 @@ class CustomPythonPackageManagedDatasetPipeline(DatasetTrainingDeployPipeline):
             [
                 "--confusion_matrix_destination_uri",
                 self._get_confusion_matrix_uri(pipeline_root),
-            ]
-        )
-        training_args.extend(
-            [
                 "--classification_report_destination_uri",
                 self._get_classification_report_uri(pipeline_root),
-            ]
-        )
-        training_args.extend(
-            [
                 "--model_history_destination_uri",
                 self._get_model_history_uri(pipeline_root),
+                "--model_history_test_destination_uri",
+                self._get_model_history_test_uri(pipeline_root),
             ]
         )
 

@@ -44,4 +44,4 @@ def run_pipeline(
         # parameter_values={"project": project_id, "display_name": pipeline.name},
     )
 
-    job.run()
+    job.run(sync=False)
