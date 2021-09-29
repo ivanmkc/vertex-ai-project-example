@@ -302,17 +302,22 @@ class DatasetTrainingDeployPipeline(managed_dataset_pipeline.ManagedDatasetPipel
         )
 
     def create_confusion_matrix_op(
-        self, project: str, pipeline_root: str, model: Model
+        self, project: str, pipeline_root: str
     ) -> Optional[Callable]:
         return None
 
     def create_classification_report_op(
-        self, project: str, pipeline_root: str, model: Model
+        self, project: str, pipeline_root: str
     ) -> Optional[Callable]:
         return None
 
     def create_model_history_op(
-        self, project: str, pipeline_root: str, model: Model
+        self, project: str, pipeline_root: str
+    ) -> Optional[Callable]:
+        return None
+
+    def create_model_history_test_op(
+        self, project: str, pipeline_root: str
     ) -> Optional[Callable]:
         return None
 
@@ -335,51 +340,54 @@ class DatasetTrainingDeployPipeline(managed_dataset_pipeline.ManagedDatasetPipel
             confusion_matrix_op = self.create_confusion_matrix_op(
                 project=project,
                 pipeline_root=pipeline_root,
-                model=training_op.output,
-            )
+            ).after(training_op)
 
             classification_report_op = self.create_classification_report_op(
                 project=project,
                 pipeline_root=pipeline_root,
-                model=training_op.output,
-            )
+            ).after(training_op)
 
             model_history_op = self.create_model_history_op(
                 project=project,
                 pipeline_root=pipeline_root,
-                model=training_op.output,
-            )
+            ).after(training_op)
+
+            model_history_test_op = self.create_model_history_test_op(
+                project=project,
+                pipeline_root=pipeline_root,
+            ).after(training_op)
 
             pipeline_metric_comparison_op = self.create_pipeline_metric_comparison_op(
                 project=project,
                 location=location,
                 pipeline_run_name=pipeline_run_name,
                 model=training_op.output,
-            ).after(confusion_matrix_op, classification_report_op, model_history_op)
+            )
 
             if self.deploy_info or self.export_info:
                 with Condition(
                     pipeline_metric_comparison_op.output == "true",
                     name="post_train_decision",
                 ):
-                    if self.deploy_info:
-                        deploy_op = gcc_aip.ModelDeployOp(
-                            model=training_op.output,
-                            # endpoint=self.deploy_info.endpoint,
-                            deployed_model_display_name=self.deploy_info.deployed_model_display_name,
-                            traffic_percentage=self.deploy_info.traffic_percentage,
-                            traffic_split=self.deploy_info.traffic_split,
-                            machine_type=self.deploy_info.machine_type,
-                            min_replica_count=self.deploy_info.min_replica_count,
-                            max_replica_count=self.deploy_info.max_replica_count,
-                            accelerator_type=self.deploy_info.accelerator_type,
-                            accelerator_count=self.deploy_info.accelerator_count,
-                            service_account=self.deploy_info.service_account,
-                            explanation_metadata=self.deploy_info.explanation_metadata,
-                            explanation_parameters=self.deploy_info.explanation_parameters,
-                            metadata=self.deploy_info.metadata,
-                            encryption_spec_key_name=self.deploy_info.encryption_spec_key_name,
-                        )
+                    # if self.deploy_info:
+                    #     deploy_op = gcc_aip.ModelDeployOp(
+                    #         project=project,
+                    #         model=training_op.output,
+                    #         # endpoint=self.deploy_info.endpoint,
+                    #         deployed_model_display_name=self.deploy_info.deployed_model_display_name,
+                    #         # traffic_percentage=self.deploy_info.traffic_percentage,
+                    #         traffic_split=self.deploy_info.traffic_split,
+                    #         machine_type=self.deploy_info.machine_type,
+                    #         min_replica_count=self.deploy_info.min_replica_count,
+                    #         max_replica_count=self.deploy_info.max_replica_count,
+                    #         accelerator_type=self.deploy_info.accelerator_type,
+                    #         accelerator_count=self.deploy_info.accelerator_count,
+                    #         service_account=self.deploy_info.service_account,
+                    #         explanation_metadata=self.deploy_info.explanation_metadata,
+                    #         explanation_parameters=self.deploy_info.explanation_parameters,
+                    #         # metadata=self.deploy_info.metadata,
+                    #         encryption_spec_key_name=self.deploy_info.encryption_spec_key_name,
+                    #     )
 
                     if self.export_info:
                         export_op = gcc_aip.ModelExportOp(

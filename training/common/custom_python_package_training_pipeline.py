@@ -94,65 +94,28 @@ class CustomPythonPackageManagedDatasetPipeline(DatasetTrainingDeployPipeline):
         return f"{pipeline_root}/confusion_matrix.json"
 
     def create_confusion_matrix_op(
-        self, project: str, pipeline_root: str, model: Model
+        self, project: str, pipeline_root: str
     ) -> Optional[Callable]:
         @component(packages_to_install=["google-cloud-storage"])
         def confusion_matrix_op(
             project: str,
             confusion_matrix_uri: str,
-            model: Input[Model],
             classification_metrics: Output[ClassificationMetrics],
         ):
-            from typing import Any, Tuple
-
-            def extract_bucket_and_prefix_from_gcs_path(
-                gcs_path: str,
-            ) -> Tuple[str, Optional[str]]:
-                """Given a complete GCS path, return the bucket name and prefix as a tuple.
-
-                Example Usage:
-
-                    bucket, prefix = extract_bucket_and_prefix_from_gcs_path(
-                        "gs://example-bucket/path/to/folder"
-                    )
-
-                    # bucket = "example-bucket"
-                    # prefix = "path/to/folder"
-
-                Args:
-                    gcs_path (str):
-                        Required. A full path to a Google Cloud Storage folder or resource.
-                        Can optionally include "gs://" prefix or end in a trailing slash "/".
-
-                Returns:
-                    Tuple[str, Optional[str]]
-                        A (bucket, prefix) pair from provided GCS path. If a prefix is not
-                        present, a None will be returned in its place.
-                """
-                if gcs_path.startswith("gs://"):
-                    gcs_path = gcs_path[5:]
-                if gcs_path.endswith("/"):
-                    gcs_path = gcs_path[:-1]
-
-                gcs_parts = gcs_path.split("/", 1)
-                gcs_bucket = gcs_parts[0]
-                gcs_blob_prefix = None if len(gcs_parts) == 1 else gcs_parts[1]
-
-                return (gcs_bucket, gcs_blob_prefix)
+            from typing import Any
+            from google.cloud.aiplatform import utils
 
             def download_object(bucket_name: str, blob_name: str) -> Any:
-                from google.cloud import storage
                 import json
 
-                storage_client = storage.Client()
-                bucket = storage_client.bucket(bucket_name)
-                blob = bucket.blob(blob_name)
+                # Download using GCSFuse
+                gcs_fuse_path = f"/gcs/{bucket_name}/{blob_name}"
 
-                object_as_string = blob.download_as_string()
-                return json.loads(object_as_string)
+                with open(gcs_fuse_path) as json_file:
+                    return json.load(json_file)
 
             # Extract uri components
-            bucket_name, prefix = extract_bucket_and_prefix_from_gcs_path(
+            bucket_name, prefix = utils.extract_bucket_and_prefix_from_gcs_path(
                 confusion_matrix_uri
             )
 
@@ -169,73 +132,36 @@ class CustomPythonPackageManagedDatasetPipeline(DatasetTrainingDeployPipeline):
         confusion_matrix_uri = self._get_confusion_matrix_uri(pipeline_root)
 
         return confusion_matrix_op(
-            project=project, confusion_matrix_uri=confusion_matrix_uri, model=model
+            project=project, confusion_matrix_uri=confusion_matrix_uri
         )
 
     def _get_classification_report_uri(self, pipeline_root: str) -> str:
         return f"{pipeline_root}/classification_report.json"
 
     def create_classification_report_op(
-        self, project: str, pipeline_root: str, model: Model
+        self, project: str, pipeline_root: str
     ) -> Optional[Callable]:
         @component(packages_to_install=["google-cloud-storage", "pandas"])
         def classification_report_op(
             project: str,
             classification_report_uri: str,
-            model: Input[Model],
             mlpipeline_ui_metadata: OutputPath(),
         ):
             import json
-            from typing import Any, Tuple
-
-            def extract_bucket_and_prefix_from_gcs_path(
-                gcs_path: str,
-            ) -> Tuple[str, Optional[str]]:
-                """Given a complete GCS path, return the bucket name and prefix as a tuple.
-
-                Example Usage:
-
-                    bucket, prefix = extract_bucket_and_prefix_from_gcs_path(
-                        "gs://example-bucket/path/to/folder"
-                    )
-
-                    # bucket = "example-bucket"
-                    # prefix = "path/to/folder"
-
-                Args:
-                    gcs_path (str):
-                        Required. A full path to a Google Cloud Storage folder or resource.
-                        Can optionally include "gs://" prefix or end in a trailing slash "/".
-
-                Returns:
-                    Tuple[str, Optional[str]]
-                        A (bucket, prefix) pair from provided GCS path. If a prefix is not
-                        present, a None will be returned in its place.
-                """
-                if gcs_path.startswith("gs://"):
-                    gcs_path = gcs_path[5:]
-                if gcs_path.endswith("/"):
-                    gcs_path = gcs_path[:-1]
-
-                gcs_parts = gcs_path.split("/", 1)
-                gcs_bucket = gcs_parts[0]
-                gcs_blob_prefix = None if len(gcs_parts) == 1 else gcs_parts[1]
-
-                return (gcs_bucket, gcs_blob_prefix)
+            from typing import Any
+            from google.cloud.aiplatform import utils
 
             def download_object(bucket_name: str, blob_name: str) -> Any:
-                from google.cloud import storage
                 import json
 
-                storage_client = storage.Client()
-                bucket = storage_client.bucket(bucket_name)
-                blob = bucket.blob(blob_name)
+                # Download using GCSFuse
+                gcs_fuse_path = f"/gcs/{bucket_name}/{blob_name}"
 
-                object_as_string = blob.download_as_string()
-                return json.loads(object_as_string)
+                with open(gcs_fuse_path) as json_file:
+                    return json.load(json_file)
 
             # Extract uri components
-            bucket_name, prefix = extract_bucket_and_prefix_from_gcs_path(
+            bucket_name, prefix = utils.extract_bucket_and_prefix_from_gcs_path(
                 classification_report_uri
             )
 
@@ -272,9 +198,7 @@ class CustomPythonPackageManagedDatasetPipeline(DatasetTrainingDeployPipeline):
 
         classification_report_uri = self._get_classification_report_uri(pipeline_root)
         return classification_report_op(
-            project=project,
-            classification_report_uri=classification_report_uri,
-            model=model,
+            project=project, classification_report_uri=classification_report_uri
         )
 
     def _get_model_history_uri(self, pipeline_root: str) -> str:
@@ -284,66 +208,29 @@ class CustomPythonPackageManagedDatasetPipeline(DatasetTrainingDeployPipeline):
         return f"{pipeline_root}/model_history_test.json"
 
     def create_model_history_op(
-        self, project: str, pipeline_root: str, model: Model
+        self, project: str, pipeline_root: str
     ) -> Optional[Callable]:
         @component(packages_to_install=["google-cloud-storage"])
         def model_history_op(
             project: str,
             model_history_uri: str,
-            model: Input[Model],
             metrics: Output[Metrics],
         ):
             import collections
-            from typing import Any, Tuple
-
-            def extract_bucket_and_prefix_from_gcs_path(
-                gcs_path: str,
-            ) -> Tuple[str, Optional[str]]:
-                """Given a complete GCS path, return the bucket name and prefix as a tuple.
-
-                Example Usage:
-
-                    bucket, prefix = extract_bucket_and_prefix_from_gcs_path(
-                        "gs://example-bucket/path/to/folder"
-                    )
-
-                    # bucket = "example-bucket"
-                    # prefix = "path/to/folder"
-
-                Args:
-                    gcs_path (str):
-                        Required. A full path to a Google Cloud Storage folder or resource.
-                        Can optionally include "gs://" prefix or end in a trailing slash "/".
-
-                Returns:
-                    Tuple[str, Optional[str]]
-                        A (bucket, prefix) pair from provided GCS path. If a prefix is not
-                        present, a None will be returned in its place.
-                """
-                if gcs_path.startswith("gs://"):
-                    gcs_path = gcs_path[5:]
-                if gcs_path.endswith("/"):
-                    gcs_path = gcs_path[:-1]
-
-                gcs_parts = gcs_path.split("/", 1)
-                gcs_bucket = gcs_parts[0]
-                gcs_blob_prefix = None if len(gcs_parts) == 1 else gcs_parts[1]
-
-                return (gcs_bucket, gcs_blob_prefix)
+            from typing import Any
+            from google.cloud.aiplatform import utils
 
             def download_object(bucket_name: str, blob_name: str) -> Any:
-                from google.cloud import storage
                 import json
 
-                storage_client = storage.Client()
-                bucket = storage_client.bucket(bucket_name)
-                blob = bucket.blob(blob_name)
+                # Download using GCSFuse
+                gcs_fuse_path = f"/gcs/{bucket_name}/{blob_name}"
 
-                object_as_string = blob.download_as_string()
-                return json.loads(object_as_string)
+                with open(gcs_fuse_path) as json_file:
+                    return json.load(json_file)
 
             # Extract uri components
-            bucket_name, prefix = extract_bucket_and_prefix_from_gcs_path(
+            bucket_name, prefix = utils.extract_bucket_and_prefix_from_gcs_path(
                 model_history_uri
             )
 
@@ -359,8 +246,51 @@ class CustomPythonPackageManagedDatasetPipeline(DatasetTrainingDeployPipeline):
 
         model_history_uri = self._get_model_history_uri(pipeline_root)
 
-        return model_history_op(
-            project=project, model_history_uri=model_history_uri, model=model
+        return model_history_op(project=project, model_history_uri=model_history_uri)
+
+    def create_model_history_test_op(
+        self, project: str, pipeline_root: str
+    ) -> Optional[Callable]:
+        @component(
+            packages_to_install=["google-cloud-storage", "google-cloud-aiplatform"]
+        )
+        def model_history_test_op(
+            project: str,
+            model_history_uri: str,
+            metrics: Output[Metrics],
+        ):
+            import collections
+            from typing import Any
+            from google.cloud.aiplatform import utils
+
+            def download_object(bucket_name: str, blob_name: str) -> Any:
+                import json
+
+                # Download using GCSFuse
+                gcs_fuse_path = f"/gcs/{bucket_name}/{blob_name}"
+
+                with open(gcs_fuse_path) as json_file:
+                    return json.load(json_file)
+
+            # Extract uri components
+            bucket_name, prefix = utils.extract_bucket_and_prefix_from_gcs_path(
+                model_history_uri
+            )
+
+            # Download confusion matrix
+            model_history = download_object(bucket_name=bucket_name, blob_name=prefix)
+
+            # Log matrix
+            for name, value in model_history.items():
+                if not isinstance(value, collections.Sequence):
+                    metrics.log_metric(name, value)
+                else:
+                    metrics.log_metric(name, value[-1])
+
+        model_history_uri = self._get_model_history_uri(pipeline_root)
+
+        return model_history_test_op(
+            project=project, model_history_uri=model_history_uri
         )
 
     def _create_training_op_for_package(
