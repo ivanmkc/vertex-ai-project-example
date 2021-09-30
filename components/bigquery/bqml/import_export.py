@@ -14,7 +14,7 @@ def bqml_import_model(
     location: str,
     model_source_path: str,
     should_replace: bool,
-) -> NamedTuple("Outputs", [("gcp_resources", str), ("model_destination", str)]):
+) -> NamedTuple("Outputs", [("gcp_resources", str), ("model_source_path", str)]):
     """Import model
 
     https://cloud.google.com/bigquery-ml/docs/reference/standard-sql/bigqueryml-syntax-create-tensorflow
@@ -62,8 +62,8 @@ def bqml_import_model(
 
     from collections import namedtuple
 
-    output = namedtuple("Outputs", ["gcp_resources", "model_name"])
-    return output(query_job_resources_serialized, model_name)
+    output = namedtuple("Outputs", ["gcp_resources", "model_source_path"])
+    return output(query_job_resources_serialized, model_source_path)
 
 
 @component(
@@ -77,9 +77,9 @@ def bqml_export_model(
     project: str,
     location: str,
     model: str,  # TODO: Change to Input[BQMLModel
-    model_destination: str,
+    model_destination_path: str,
     trial_id: Optional[str],
-) -> NamedTuple("Outputs", [("gcp_resources", str), ("model_destination", str)]):
+) -> NamedTuple("Outputs", [("gcp_resources", str), ("model_destination_path", str)]):
     """Export model
 
     https://cloud.google.com/bigquery-ml/docs/reference/standard-sql/bigqueryml-syntax-export-model
@@ -93,16 +93,18 @@ def bqml_export_model(
 
     # Build query
     def build_query(
-        model_name: str, model_destination: str, trial_id: Optional[str]
+        model_name: str, model_destination_path: str, trial_id: Optional[str]
     ) -> str:
         if trial_id:
-            return f"EXPORT MODEL `{model_name}` OPTIONS(URI = {model_destination}, TRIAL_ID = {trial_id})"
+            return f"EXPORT MODEL `{model_name}` OPTIONS(URI = {model_destination_path}, TRIAL_ID = {trial_id})"
         else:
-            return f"EXPORT MODEL `{model_name}` OPTIONS(URI = {model_destination})"
+            return (
+                f"EXPORT MODEL `{model_name}` OPTIONS(URI = {model_destination_path})"
+            )
 
     query = build_query(
         model_name=model,
-        model_destination=model_destination,
+        model_destination_path=model_destination_path,
         trial_id=trial_id,
     )
 
@@ -123,5 +125,5 @@ def bqml_export_model(
 
     from collections import namedtuple
 
-    output = namedtuple("Outputs", ["gcp_resources", "model_destination"])
-    return output(query_job_resources_serialized, model_destination)
+    output = namedtuple("Outputs", ["gcp_resources", "model_destination_path"])
+    return output(query_job_resources_serialized, model_destination_path)

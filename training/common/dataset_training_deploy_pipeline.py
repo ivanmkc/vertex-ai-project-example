@@ -190,11 +190,13 @@ class DatasetTrainingDeployPipeline(managed_dataset_pipeline.ManagedDatasetPipel
         name: str,
         managed_dataset: managed_dataset_pipeline.ManagedDataset,
         metric_key_for_comparison: Optional[str],
+        is_metric_greater_better: bool,
         deploy_info: Optional[DeployInfo],
         export_info: Optional[ExportInfo],
     ):
         super().__init__(name=name, managed_dataset=managed_dataset)
         self.metric_key_for_comparison = metric_key_for_comparison
+        self.is_metric_greater_better = is_metric_greater_better
         self.deploy_info = deploy_info
         self.export_info = export_info
 
@@ -202,11 +204,25 @@ class DatasetTrainingDeployPipeline(managed_dataset_pipeline.ManagedDatasetPipel
     def create_training_op(self, project: str, dataset: Dataset) -> Callable:
         pass
 
-    def get_metric_key_for_comparison(self) -> Optional[str]:
-        return self.metric_key_for_comparison
+    @abc.abstractmethod
+    def create_get_metric_op(
+        self, project: str, pipeline_root: str, metric_name: str
+    ) -> Optional[Callable]:
+        pass
+
+    @abc.abstractmethod
+    def create_get_incumbent_metric_op(
+        self, project: str, pipeline_root: str, metric_name: str
+    ) -> Optional[Callable]:
+        pass
 
     def create_pipeline_metric_comparison_op(
-        self, project: str, location: str, pipeline_run_name: str, model: Model
+        self,
+        project: str,
+        location: str,
+        pipeline_root: str,
+        metric: float,
+        incumbent_metric: float,
     ) -> Callable:
         @component(
             packages_to_install=[
@@ -218,87 +234,28 @@ class DatasetTrainingDeployPipeline(managed_dataset_pipeline.ManagedDatasetPipel
         def pipeline_metric_comparison_op(
             project: str,
             location: str,
-            pipeline_run_name: str,
-            pipeline_name: str,
-            model: Input[Model],
-            pipeline_job_id_injected: str = "{{$.pipeline_job_uuid}}",
-            metric_key: Optional[str] = None,
+            metric: float,
+            incumbent_metric: float,
             is_greater_better: bool = True,
-        ) -> bool:  # Return parameter.
-            print(f"metric_key={metric_key}")
-            print(f"pipeline_job_id_injected={pipeline_job_id_injected}")
+        ) -> bool:
+
             # If no target metric key is provided, return True
-            if not metric_key:
+            if incumbent_metric is None:
                 return True
-
-            from google.cloud import aiplatform
-            import pandas as pd
-
-            pd.set_option("max_columns", None)  # show all cols
-            pd.set_option("max_colwidth", None)  # show full width of showing cols
-            pd.set_option(
-                "expand_frame_repr", False
-            )  # print cols side by side as it's supposed to be
-
-            aiplatform.init(project=project, location=location)
-
-            # Get all metrics from all pipeline runs
-            df_metrics = aiplatform.get_pipeline_df(pipeline_name)
-
-            # Check if pipeline_run_name is even in the data
-            if pipeline_run_name not in df_metrics["run_name"].values:
-                raise RuntimeError(
-                    f"Current run id ({pipeline_run_name}) not found in metrics."
-                )
-
-            # Get current metric
-            print(f"pipeline_run_name: {pipeline_run_name}")
-            # print(f"metrics_for_all_pipelines: {df_metrics}")
-
-            metrics_for_current_run = df_metrics[
-                df_metrics["run_name"] == pipeline_run_name
-            ]
-            metric_value_for_current_run = metrics_for_current_run.to_dict("records")[
-                0
-            ].get(metric_key)
-
-            print(f"metric_value_for_current_run: {metric_value_for_current_run}")
-
-            if pd.isna(metric_value_for_current_run):
-                raise RuntimeError(f"Metric value is not available.")
-
-            # Get row for max metric
-            if is_greater_better:
-                metrics_for_best_run = df_metrics[
-                    df_metrics[metric_key] == df_metrics[metric_key].max()
-                ]
-
-                metric_value_for_best_run = metrics_for_best_run.to_dict("records")[
-                    0
-                ].get(metric_key)
-
-                return metric_value_for_current_run >= metric_value_for_best_run
+            elif metric is None:
+                return False
             else:
-                metrics_for_best_run = df_metrics[
-                    df_metrics[metric_key] == df_metrics[metric_key].min()
-                ]
-
-                metric_value_for_best_run = metrics_for_best_run.to_dict("records")[
-                    0
-                ].get(metric_key)
-
-                return metric_value_for_current_run <= metric_value_for_best_run
-
-        metric_key = self.get_metric_key_for_comparison()
+                if is_greater_better:
+                    return metric >= incumbent_metric
+                else:
+                    return metric <= incumbent_metric
 
         return pipeline_metric_comparison_op(
             project=project,
             location=location,
-            pipeline_run_name=pipeline_run_name,
-            pipeline_name=self.name,
-            model=model,
-            metric_key=metric_key,
-            is_greater_better=True,
+            metric=metric,
+            incumbent_metric=incumbent_metric,
+            is_greater_better=self.is_metric_greater_better,
         )
 
     def create_confusion_matrix_op(
@@ -328,14 +285,14 @@ class DatasetTrainingDeployPipeline(managed_dataset_pipeline.ManagedDatasetPipel
         def pipeline():
             dataset_op = self.managed_dataset.as_kfp_op(project=project)
 
-            # training_op = self.create_training_op(
-            #     project=project, pipeline_root=pipeline_root, dataset=dataset_op.output
-            # )
-            training_op = importer(
-                artifact_uri="807754018322382848",
-                artifact_class=Model,
-                reimport=False,
+            training_op = self.create_training_op(
+                project=project, pipeline_root=pipeline_root, dataset=dataset_op.output
             )
+            # training_op = importer(
+            #     artifact_uri="807754018322382848",
+            #     artifact_class=Model,
+            #     reimport=False,
+            # )
 
             confusion_matrix_op = self.create_confusion_matrix_op(
                 project=project,
@@ -357,11 +314,24 @@ class DatasetTrainingDeployPipeline(managed_dataset_pipeline.ManagedDatasetPipel
                 pipeline_root=pipeline_root,
             ).after(training_op)
 
+            get_metric_op = self.create_get_metric_op(
+                project=project,
+                pipeline_root=pipeline_root,
+                metric_name=self.metric_key_for_comparison,
+            ).after(training_op)
+
+            get_incumbent_metric_op = self.create_get_incumbent_metric_op(
+                project=project,
+                pipeline_root=pipeline_root,
+                metric_name=self.metric_key_for_comparison,
+            ).after(training_op)
+
             pipeline_metric_comparison_op = self.create_pipeline_metric_comparison_op(
                 project=project,
                 location=location,
-                pipeline_run_name=pipeline_run_name,
-                model=training_op.output,
+                pipeline_root=pipeline_root,
+                metric=get_metric_op.output,
+                incumbent_metric=get_incumbent_metric_op.output,
             )
 
             if self.deploy_info or self.export_info:

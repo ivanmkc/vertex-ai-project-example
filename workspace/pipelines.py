@@ -32,31 +32,31 @@ DEPLOY_COMPUTE = "n1-standard-4"
 
 class pipelines:
     class classification:
-        automl_pipeline = AutoMLImageManagedDatasetPipeline(
-            name="image-classification-automl",
-            managed_dataset=datasets.classification.flowers,
-            training_info=AutoMLImageTrainingInfo(
-                prediction_type="classification",
-                model_type="CLOUD",
-                training_fraction_split=0.6,
-                validation_fraction_split=0.2,
-                test_fraction_split=0.2,
-                budget_milli_node_hours=8000,
-            ),
-        )
+        # automl_pipeline = AutoMLImageManagedDatasetPipeline(
+        #     name="image-classification-automl",
+        #     managed_dataset=datasets.classification.flowers,
+        #     training_info=AutoMLImageTrainingInfo(
+        #         prediction_type="classification",
+        #         model_type="CLOUD",
+        #         training_fraction_split=0.6,
+        #         validation_fraction_split=0.2,
+        #         test_fraction_split=0.2,
+        #         budget_milli_node_hours=8000,
+        #     ),
+        # )
 
-        automl_pipeline_car_damage = AutoMLImageManagedDatasetPipeline(
-            name="image-classification-automl-car-damage",
-            managed_dataset=datasets.classification.car_damage,
-            training_info=AutoMLImageTrainingInfo(
-                prediction_type="classification",
-                model_type="CLOUD",
-                training_fraction_split=0.6,
-                validation_fraction_split=0.2,
-                test_fraction_split=0.2,
-                budget_milli_node_hours=8000,
-            ),
-        )
+        # automl_pipeline_car_damage = AutoMLImageManagedDatasetPipeline(
+        #     name="image-classification-automl-car-damage",
+        #     managed_dataset=datasets.classification.car_damage,
+        #     training_info=AutoMLImageTrainingInfo(
+        #         prediction_type="classification",
+        #         model_type="CLOUD",
+        #         training_fraction_split=0.6,
+        #         validation_fraction_split=0.2,
+        #         test_fraction_split=0.2,
+        #         budget_milli_node_hours=8000,
+        #     ),
+        # )
 
         custom_pipeline = CustomPythonPackageManagedDatasetPipeline(
             name="image-classification-custom",
@@ -83,19 +83,19 @@ class pipelines:
         )
 
     class object_detection:
-        automl_pipeline = AutoMLImageManagedDatasetPipeline(
-            name="object-detection-automl",
-            managed_dataset=datasets.object_detection.mineral_plants,
-            training_info=AutoMLImageTrainingInfo(
-                prediction_type="object_detection",
-                model_type="MOBILE_TF_LOW_LATENCY_1",
-                budget_milli_node_hours=20000,
-            ),
-            export_info=ExportInfo(
-                export_format_id="tf-saved-model",
-                artifact_destination="gs://mineral-cloud-data/exported_models",
-            ),
-        )
+        # automl_pipeline = AutoMLImageManagedDatasetPipeline(
+        #     name="object-detection-automl",
+        #     managed_dataset=datasets.object_detection.mineral_plants,
+        #     training_info=AutoMLImageTrainingInfo(
+        #         prediction_type="object_detection",
+        #         model_type="MOBILE_TF_LOW_LATENCY_1",
+        #         budget_milli_node_hours=20000,
+        #     ),
+        #     export_info=ExportInfo(
+        #         export_format_id="tf-saved-model",
+        #         artifact_destination="gs://mineral-cloud-data/exported_models",
+        #     ),
+        # )
 
         custom_pipeline = CustomPythonPackageManagedDatasetPipeline(
             name="object-detection-custom",
@@ -137,6 +137,7 @@ class pipelines:
                 "tensorflow_examples @ git+https://github.com/tensorflow/examples.git@master#egg=corepkg",
                 "Pillow",
                 "tensorflow",
+                "google-cloud-aiplatform",
             ],
             training_info=CustomPythonPackageTrainingInfo(
                 container_uri=TRAIN_IMAGE,

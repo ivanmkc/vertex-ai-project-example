@@ -69,9 +69,13 @@ def bq_query(
 def export(
     project: str,
     location: str,
-    source_table_id: str,
+    source_table_or_model_id: str,
     destination_uri: str,
-    destinationFormat: Optional[str],
+    destination_format: Optional[str],
+    field_delimiter: Optional[str],
+    compression: Optional[str],
+    print_header: Optional[bool],
+    use_avro_logical_types: Optional[str],
     source_table_location: Optional[str] = None,
 ) -> NamedTuple("Outputs", [("gcp_resources", str), ("model", str)]):
     """Export BigQuery table to CSV at GCS destination
@@ -87,10 +91,16 @@ def export(
 
     client = bigquery.Client(project=project, location=location)
 
-    job_config = bigquery.ExtractJobConfig(destination_format=destinationFormat)
+    job_config = bigquery.ExtractJobConfig(
+        compression=compression,
+        destination_format=destination_format,
+        field_delimiter=field_delimiter,
+        print_header=print_header,
+        use_avro_logical_types=use_avro_logical_types,
+    )
 
     extract_job = client.extract_table(
-        source=source_table_id,
+        source=source_table_or_model_id,
         destination_uris=destination_uri,
         # Location must match that of the source table.
         location=source_table_location,

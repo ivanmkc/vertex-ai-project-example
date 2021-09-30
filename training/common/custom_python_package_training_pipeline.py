@@ -17,12 +17,13 @@ from kfp.v2.dsl import (
     component,
 )
 
-from google.cloud.aiplatform.utils import source_utils
+from google.cloud.aiplatform import utils
 from training.common.managed_dataset_pipeline import ManagedDataset
 from typing import Callable, Dict, List, Optional, Sequence, Union
 from google_cloud_pipeline_components import aiplatform as gcc_aip
+from training.util import util
 
-PYTHON_MODULE_NAME = f"{source_utils._TrainingScriptPythonPackager._ROOT_MODULE}.{source_utils._TrainingScriptPythonPackager._TASK_MODULE_NAME}"
+PYTHON_MODULE_NAME = f"{utils.source_utils._TrainingScriptPythonPackager._ROOT_MODULE}.{utils.source_utils._TrainingScriptPythonPackager._TASK_MODULE_NAME}"
 
 
 @dataclasses.dataclass
@@ -75,6 +76,7 @@ class CustomPythonPackageManagedDatasetPipeline(DatasetTrainingDeployPipeline):
         requirements: List[str],
         training_info: CustomPythonPackageTrainingInfo,
         metric_key_for_comparison: Optional[str] = None,
+        is_metric_greater_better: bool = True,
         deploy_info: Optional[DeployInfo] = None,
         export_info: Optional[ExportInfo] = None,
     ):
@@ -82,6 +84,7 @@ class CustomPythonPackageManagedDatasetPipeline(DatasetTrainingDeployPipeline):
             name=name,
             managed_dataset=managed_dataset,
             metric_key_for_comparison=metric_key_for_comparison,
+            is_metric_greater_better=is_metric_greater_better,
             deploy_info=deploy_info,
             export_info=export_info,
         )
@@ -96,7 +99,9 @@ class CustomPythonPackageManagedDatasetPipeline(DatasetTrainingDeployPipeline):
     def create_confusion_matrix_op(
         self, project: str, pipeline_root: str
     ) -> Optional[Callable]:
-        @component(packages_to_install=["google-cloud-storage"])
+        @component(
+            packages_to_install=["google-cloud-storage", "google-cloud-aiplatform"]
+        )
         def confusion_matrix_op(
             project: str,
             confusion_matrix_uri: str,
@@ -141,7 +146,13 @@ class CustomPythonPackageManagedDatasetPipeline(DatasetTrainingDeployPipeline):
     def create_classification_report_op(
         self, project: str, pipeline_root: str
     ) -> Optional[Callable]:
-        @component(packages_to_install=["google-cloud-storage", "pandas"])
+        @component(
+            packages_to_install=[
+                "google-cloud-storage",
+                "google-cloud-aiplatform",
+                "pandas",
+            ]
+        )
         def classification_report_op(
             project: str,
             classification_report_uri: str,
@@ -207,10 +218,67 @@ class CustomPythonPackageManagedDatasetPipeline(DatasetTrainingDeployPipeline):
     def _get_model_history_test_uri(self, pipeline_root: str) -> str:
         return f"{pipeline_root}/model_history_test.json"
 
+    def create_get_metric_op(
+        self, project: str, pipeline_root: str, metric_name: str
+    ) -> Optional[Callable]:
+        # Get metric from test results
+        return self.create_get_generic_metric_op(
+            project=project,
+            metric_name=metric_name,
+            metrics_uri=self._get_model_history_test_uri(pipeline_root=pipeline_root),
+        )
+
+    def create_get_incumbent_metric_op(
+        self, project: str, pipeline_root: str, metric_name: str
+    ) -> Optional[Callable]:
+        # TODO: Inject actual metrics_uri
+        return self.create_get_generic_metric_op(
+            project=project,
+            metric_name=metric_name,
+            metrics_uri=self._get_model_history_test_uri(
+                pipeline_root=pipeline_root
+            ),  # Pass None
+        )
+
+    def create_get_generic_metric_op(
+        self, project: str, metric_name: str, metrics_uri: str
+    ) -> Optional[Callable]:
+        @component(
+            packages_to_install=[
+                "google-cloud-aiplatform",
+            ]
+        )
+        def get_metric_op(project: str, metrics_uri: str) -> float:
+            from google.cloud.aiplatform import utils
+            from typing import Any
+
+            def download_object(bucket_name: str, blob_name: str) -> Any:
+                import json
+
+                # Download using GCSFuse
+                gcs_fuse_path = f"/gcs/{bucket_name}/{blob_name}"
+
+                with open(gcs_fuse_path) as json_file:
+                    return json.load(json_file)
+
+            # Extract uri components
+            (
+                bucket_name,
+                prefix,
+            ) = utils.extract_bucket_and_prefix_from_gcs_path(metrics_uri)
+
+            model_history = download_object(bucket_name=bucket_name, blob_name=prefix)
+
+            return model_history.get(metric_name)
+
+        return get_metric_op(project=project, metrics_uri=metrics_uri)
+
     def create_model_history_op(
         self, project: str, pipeline_root: str
     ) -> Optional[Callable]:
-        @component(packages_to_install=["google-cloud-storage"])
+        @component(
+            packages_to_install=["google-cloud-storage", "google-cloud-aiplatform"]
+        )
         def model_history_op(
             project: str,
             model_history_uri: str,
@@ -234,7 +302,7 @@ class CustomPythonPackageManagedDatasetPipeline(DatasetTrainingDeployPipeline):
                 model_history_uri
             )
 
-            # Download confusion matrix
+            # Download
             model_history = download_object(bucket_name=bucket_name, blob_name=prefix)
 
             # Log matrix
@@ -277,7 +345,7 @@ class CustomPythonPackageManagedDatasetPipeline(DatasetTrainingDeployPipeline):
                 model_history_uri
             )
 
-            # Download confusion matrix
+            # Download
             model_history = download_object(bucket_name=bucket_name, blob_name=prefix)
 
             # Log matrix
@@ -287,11 +355,14 @@ class CustomPythonPackageManagedDatasetPipeline(DatasetTrainingDeployPipeline):
                 else:
                     metrics.log_metric(name, value[-1])
 
-        model_history_uri = self._get_model_history_uri(pipeline_root)
+        model_history_uri = self._get_model_history_test_uri(pipeline_root)
 
         return model_history_test_op(
             project=project, model_history_uri=model_history_uri
         )
+
+    def get_incumbent_metric_for_comparison(self) -> Optional[float]:
+        return None
 
     def _create_training_op_for_package(
         self,
@@ -361,7 +432,7 @@ class CustomPythonPackageManagedDatasetPipeline(DatasetTrainingDeployPipeline):
 
     def _package_and_upload_module(self, project: str, pipeline_root: str) -> str:
         # Create packager
-        python_packager = source_utils._TrainingScriptPythonPackager(
+        python_packager = utils.source_utils._TrainingScriptPythonPackager(
             script_path=self.training_script_path, requirements=self.requirements
         )
 
