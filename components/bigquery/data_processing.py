@@ -77,7 +77,7 @@ def export(
     print_header: Optional[bool],
     use_avro_logical_types: Optional[str],
     source_table_location: Optional[str] = None,
-) -> NamedTuple("Outputs", [("gcp_resources", str), ("model", str)]):
+) -> NamedTuple("Outputs", [("gcp_resources", str), ("destination_uri", str)]):
     """Export BigQuery table to CSV at GCS destination
 
     https://cloud.google.com/bigquery-ml/docs/reference/standard-sql/bigqueryml-syntax-predict

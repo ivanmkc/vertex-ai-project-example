@@ -1,6 +1,8 @@
 from training.tabular.bq_training_pipelines import (
     BQMLTrainingPipeline,
     BQQueryAutoMLPipeline,
+    BQQueryCustomPipeline,
+    BQMLExportToVertexAI,
 )
 from training.common.custom_python_package_training_pipeline import (
     CustomPythonPackageTrainingInfo,
@@ -163,49 +165,76 @@ class pipelines:
 
     class tabular:
         bqml_custom_predict = BQMLTrainingPipeline(
-            name="bqml-training",
+            name="bqml-custom-predict",
             query_training="""
-            CREATE OR REPLACE MODEL `bqml_tutorial_ivan.sample_model3`
-            OPTIONS(model_type='logistic_reg') AS
-            SELECT
-            IF(totals.transactions IS NULL, 0, 1) AS label,
-            IFNULL(device.operatingSystem, "") AS os,
-            device.isMobile AS is_mobile,
-            IFNULL(geoNetwork.country, "") AS country,
-            IFNULL(totals.pageviews, 0) AS pageviews
-            FROM
-            `bigquery-public-data.google_analytics_sample.ga_sessions_*`
-            WHERE
-            _TABLE_SUFFIX BETWEEN '20160801' AND '20170630'
-        """,
+                CREATE OR REPLACE MODEL `bqml_tutorial_ivan.sample_model3`
+                OPTIONS(model_type='logistic_reg') AS
+                SELECT
+                IF(totals.transactions IS NULL, 0, 1) AS label,
+                IFNULL(device.operatingSystem, "") AS os,
+                device.isMobile AS is_mobile,
+                IFNULL(geoNetwork.country, "") AS country,
+                IFNULL(totals.pageviews, 0) AS pageviews
+                FROM
+                `bigquery-public-data.google_analytics_sample.ga_sessions_*`
+                WHERE
+                _TABLE_SUFFIX BETWEEN '20160801' AND '20170630'
+            """,
             query_statement_evaluation="""
-            SELECT
-                IF(totals.transactions IS NULL,  0, 1) AS label,
-                IFNULL(device.operatingSystem, "") AS os,
-                device.isMobile AS is_mobile,
-                IFNULL(geoNetwork.country, "") AS country,
-                IFNULL(totals.pageviews, 0) AS pageviews
-            FROM
-                `bigquery-public-data.google_analytics_sample.ga_sessions_*`
-            WHERE
-                _TABLE_SUFFIX BETWEEN '20170701' AND '20170801'        
-        """,
+                SELECT
+                    IF(totals.transactions IS NULL,  0, 1) AS label,
+                    IFNULL(device.operatingSystem, "") AS os,
+                    device.isMobile AS is_mobile,
+                    IFNULL(geoNetwork.country, "") AS country,
+                    IFNULL(totals.pageviews, 0) AS pageviews
+                FROM
+                    `bigquery-public-data.google_analytics_sample.ga_sessions_*`
+                WHERE
+                    _TABLE_SUFFIX BETWEEN '20170701' AND '20170801'        
+            """,
             query_statement_prediction="""
-            SELECT
-                IFNULL(device.operatingSystem, "") AS os,
-                device.isMobile AS is_mobile,
-                IFNULL(geoNetwork.country, "") AS country,
-                IFNULL(totals.pageviews, 0) AS pageviews
-            FROM
-                `bigquery-public-data.google_analytics_sample.ga_sessions_*`
-            WHERE
-                _TABLE_SUFFIX BETWEEN '20170801' AND '20170901'        
-        """,
+                SELECT
+                    IFNULL(device.operatingSystem, "") AS os,
+                    device.isMobile AS is_mobile,
+                    IFNULL(geoNetwork.country, "") AS country,
+                    IFNULL(totals.pageviews, 0) AS pageviews
+                FROM
+                    `bigquery-public-data.google_analytics_sample.ga_sessions_*`
+                WHERE
+                    _TABLE_SUFFIX BETWEEN '20170801' AND '20170901'        
+            """,
         )
 
         bq_automl = BQQueryAutoMLPipeline(
             name="bq-automl",
             query="SELECT * FROM `bigquery-public-data.ml_datasets.penguins`",
+            training_location="us-central1",
             optimization_prediction_type="classification",
             target_column="species",
+        )
+
+        bq_custom = BQQueryCustomPipeline(
+            name="bq-query-custom",
+            query="SELECT * FROM `bigquery-public-data.ml_datasets.penguins`",
+            training_image_uri=TRAIN_IMAGE,
+            export_format="CSV",
+            training_location="us-central1",
+        )
+
+        bqml_export_vertexai = BQMLExportToVertexAI(
+            name="bqml-export-vertexai",
+            query_training="""
+                CREATE OR REPLACE MODEL `bqml_tutorial_ivan.sample_model3`
+                OPTIONS(model_type='logistic_reg') AS
+                SELECT
+                IF(totals.transactions IS NULL, 0, 1) AS label,
+                IFNULL(device.operatingSystem, "") AS os,
+                device.isMobile AS is_mobile,
+                IFNULL(geoNetwork.country, "") AS country,
+                IFNULL(totals.pageviews, 0) AS pageviews
+                FROM
+                `bigquery-public-data.google_analytics_sample.ga_sessions_*`
+                WHERE
+                _TABLE_SUFFIX BETWEEN '20160801' AND '20170630'
+            """,
         )

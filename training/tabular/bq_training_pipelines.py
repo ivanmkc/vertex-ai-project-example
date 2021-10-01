@@ -14,11 +14,15 @@
 from typing import Dict, List, Optional
 
 import kfp
+from kfp.v2.dsl import component
 from pipelines_folder.pipeline import Pipeline
 from typing import Any, Callable
 from google_cloud_pipeline_components import aiplatform as gcc_aip
-from components.bigquery.bqml import training, evaluation, prediction
+from components.bigquery.bqml import training, evaluation, import_export, prediction
 from components.bigquery import data_processing
+from training.common.custom_python_package_training_pipeline import (
+    CustomPythonPackageTrainingInfo,
+)
 
 
 class BQMLTrainingPipeline(Pipeline):
@@ -109,10 +113,12 @@ class BQQueryAutoMLPipeline(Pipeline):
         query: str,
         optimization_prediction_type: str,
         target_column: str,
+        training_location: Optional[str] = None,
     ):
         super().__init__(name=name)
 
         self.query = query
+        self.training_location = training_location
         self.optimization_prediction_type = optimization_prediction_type
         self.target_column = target_column
 
@@ -127,12 +133,21 @@ class BQQueryAutoMLPipeline(Pipeline):
                 query=self.query,
             )
 
+            # Op to package args into an arg list
+            @component(packages_to_install=[])
+            def add_bq_prefix_op(bq_uri: str) -> str:
+                return f"bq://{bq_uri}"
+
+            add_bq_prefix_op = add_bq_prefix_op(
+                bq_uri=query_op.outputs["destination_table_id"]
+            )
+
             dataset_op = gcc_aip.TabularDatasetCreateOp(
                 display_name=self.name,
                 gcs_source=None,
-                bq_source=query_op.outputs["destination_table_id"],
+                bq_source=add_bq_prefix_op.output,
                 project=project,
-                location=location,
+                location=self.training_location,
             )
 
             training_op = gcc_aip.AutoMLTabularTrainingJobRunOp(
@@ -141,7 +156,117 @@ class BQQueryAutoMLPipeline(Pipeline):
                 dataset=dataset_op.output,
                 target_column=self.target_column,
                 project=project,
+                location=self.training_location,
+            )
+
+        return pipeline
+
+
+class BQQueryCustomPipeline(Pipeline):
+    """
+    Runs a BQ query, creates a model and generates evaluations
+    """
+
+    def __init__(
+        self,
+        name: str,
+        query: str,
+        training_image_uri: str,
+        training_location: Optional[str],
+        export_format: Optional[str] = None,
+    ):
+        super().__init__(name=name)
+
+        self.query = query
+        self.training_image_uri = training_image_uri
+        self.training_location = training_location
+        self.export_format = export_format
+
+    def create_pipeline(
+        self, project: str, pipeline_root: str, pipeline_run_name: str, location: str
+    ) -> Callable[..., Any]:
+        @kfp.dsl.pipeline(name=self.name, pipeline_root=pipeline_root)
+        def pipeline():
+            query_op = data_processing.bq_query(
+                project=project,
                 location=location,
+                query=self.query,
+            )
+
+            export_op = data_processing.export(
+                project=project,
+                location=location,
+                source_table_id=query_op.outputs["destination_table_id"],
+                destination_uri=pipeline_root,
+                destination_format=self.export_format,
+            )
+
+            # Op to package args into an arg list
+            @component(packages_to_install=[])
+            def create_args_op(export_destination_uri: str) -> List[str]:
+                return [
+                    "--data_uri",
+                    export_destination_uri,
+                ]
+
+            args_op = create_args_op(
+                export_destination_uri=export_op.outputs["destination_uri"]
+            )
+
+            package_gcs_uri = "gs://package_uri"
+            python_module_name = "training_task.py"
+
+            training_op = gcc_aip.CustomPythonPackageTrainingJobRunOp(
+                display_name=self.name,
+                python_package_gcs_uri=package_gcs_uri,
+                python_module_name=python_module_name,
+                project=project,
+                location=self.training_location or location,
+                args=args_op.output,
+                container_uri=self.training_image_uri,
+            )
+
+        return pipeline
+
+
+class BQMLExportToVertexAI(Pipeline):
+    """
+    Runs a BQ query, creates a model and generates evaluations
+    """
+
+    def __init__(
+        self,
+        name: str,
+        query_training: str,
+    ):
+        super().__init__(name=name)
+
+        self.query_training = query_training
+
+    def create_pipeline(
+        self, project: str, pipeline_root: str, pipeline_run_name: str, location: str
+    ) -> Callable[..., Any]:
+        @kfp.dsl.pipeline(name=self.name, pipeline_root=pipeline_root)
+        def pipeline():
+            create_model_op = training.bqml_create_model_op(
+                project=project,
+                location=location,
+                query=self.query_training,
+            )
+
+            export_op = import_export.bqml_export_model(
+                project=project,
+                location=location,
+                model=create_model_op.outputs["model"],
+                model_destination=f"{pipeline_root}/exported_model",
+            )
+
+            import_op = gcc_aip.ModelUploadOp(
+                project=project,
+                location=location,
+                display_name=self.name,
+                serving_container_image_uri="tensorflow/serving",
+                artifact_uri=export_op.outputs["model_destination"],
             )
 
         return pipeline

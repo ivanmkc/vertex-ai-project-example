@@ -11,11 +11,13 @@ pipeline_root = "{}/pipeline_root".format(BUCKET_NAME)
 for pipeline in [
     # pipelines.tabular.bqml_custom_predict,
     pipelines.tabular.bq_automl,
+    # pipelines.tabular.bq_custom,
+    # pipelines.tabular.bqml_export_vertexai,
 ]:
     print(f"Running pipeline: {pipeline.name}")
     util.run_pipeline(
         project_id="python-docs-samples-tests",
-        location="us-east1",
+        location="us-central1",
         pipeline_root=pipeline_root,
         pipeline=pipeline,
     )
