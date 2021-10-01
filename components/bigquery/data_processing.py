@@ -76,7 +76,6 @@ def export(
     compression: Optional[str] = None,
     print_header: Optional[bool] = None,
     use_avro_logical_types: Optional[str] = None,
-    source_table_location: Optional[str] = None,
 ) -> NamedTuple("Outputs", [("gcp_resources", str), ("destination_uri", str)]):
     """Export BigQuery table to CSV at GCS destination
 
@@ -102,8 +101,7 @@ def export(
     extract_job = client.extract_table(
         source=source,
         destination_uris=destination_uri,
-        # Location must match that of the source table.
-        location=source_table_location,
+        location=location,
         job_config=job_config,
     )  # API request
     extract_job.result()  # Waits for job to complete.
