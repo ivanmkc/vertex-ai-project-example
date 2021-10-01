@@ -1,8 +1,3 @@
-from training.image.automl_image_training_pipeline import (
-    AutoMLImageTrainingInfo,
-    AutoMLImageManagedDatasetPipeline,
-)
-
 from training.tabular.bq_training_pipelines import (
     BQMLTrainingPipeline,
     BQQueryAutoMLPipeline,
@@ -154,7 +149,7 @@ class pipelines:
                 accelerator_type=TRAIN_GPU.name,
                 accelerator_count=TRAIN_NGPU,
             ),
-            metric_key_for_comparison="metric.val_accuracy",
+            metric_key_for_comparison="accuracy",
             deploy_info=DeployInfo(
                 machine_type=DEPLOY_COMPUTE,
                 accelerator_count=1,

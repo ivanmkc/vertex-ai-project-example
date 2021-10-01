@@ -248,7 +248,7 @@ class CustomPythonPackageManagedDatasetPipeline(DatasetTrainingDeployPipeline):
                 "google-cloud-aiplatform",
             ]
         )
-        def get_metric_op(project: str, metrics_uri: str) -> float:
+        def get_metric_op(project: str, metrics_uri: str, metric_name: str) -> float:
             from google.cloud.aiplatform import utils
             from typing import Any
 
@@ -271,7 +271,9 @@ class CustomPythonPackageManagedDatasetPipeline(DatasetTrainingDeployPipeline):
 
             return model_history.get(metric_name)
 
-        return get_metric_op(project=project, metrics_uri=metrics_uri)
+        return get_metric_op(
+            project=project, metrics_uri=metrics_uri, metric_name=metric_name
+        )
 
     def create_model_history_op(
         self, project: str, pipeline_root: str

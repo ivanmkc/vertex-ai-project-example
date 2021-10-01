@@ -438,7 +438,7 @@ class IoU(tf.keras.metrics.Metric):
             tf.reduce_sum(iou, name="mean_iou"), num_valid_entries
         )
 
-    def reset_states(self):
+    def reset_state(self):
         tf.keras.backend.set_value(
             self.total_cm, np.zeros((self.num_classes, self.num_classes))
         )
@@ -478,15 +478,11 @@ if model_dir:
 def upload_blob(bucket_name, source_file_name, destination_blob_name):
     """Uploads a file to the bucket."""
 
-    storage_client = storage.Client()
-    bucket = storage_client.bucket(bucket_name)
-    blob = bucket.blob(destination_blob_name)
+    import shutil
 
-    blob.upload_from_filename(source_file_name)
+    destination_file_name = f"/gcs/{bucket_name}/{destination_blob_name}"
 
-    destination_file_name = os.path.join("gs://", bucket_name, destination_blob_name)
-
-    return destination_file_name
+    shutil.copy(source_file_name, destination_file_name)
 
 
 if args.confusion_matrix_destination_uri or args.classification_report_destination_uri:
@@ -620,7 +616,13 @@ if args.model_history_test_destination_uri:
     with open(LOCAL_FILE, "w") as outfile:
         import json
 
-        json.dump(model_history_test.history, outfile)
+        metrics_dictionary = {
+            name: value for name, value in zip(model.metrics_names, model_history_test)
+        }
+
+        print(f"metrics_dictionary: {metrics_dictionary}")
+
+        json.dump(metrics_dictionary, outfile)
 
     # Upload to bucket
     bucket, prefix = utils.extract_bucket_and_prefix_from_gcs_path(

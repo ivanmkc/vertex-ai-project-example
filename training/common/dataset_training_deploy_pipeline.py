@@ -285,14 +285,14 @@ class DatasetTrainingDeployPipeline(managed_dataset_pipeline.ManagedDatasetPipel
         def pipeline():
             dataset_op = self.managed_dataset.as_kfp_op(project=project)
 
-            training_op = self.create_training_op(
-                project=project, pipeline_root=pipeline_root, dataset=dataset_op.output
-            )
-            # training_op = importer(
-            #     artifact_uri="807754018322382848",
-            #     artifact_class=Model,
-            #     reimport=False,
+            # training_op = self.create_training_op(
+            #     project=project, pipeline_root=pipeline_root, dataset=dataset_op.output
             # )
+            training_op = importer(
+                artifact_uri="aiplatform://v1/projects/386521456919/locations/us-central1/models/606991991183507456",
+                artifact_class=Model,
+                reimport=False,
+            )
 
             confusion_matrix_op = self.create_confusion_matrix_op(
                 project=project,
