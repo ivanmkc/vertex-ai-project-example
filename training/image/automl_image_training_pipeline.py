@@ -8,7 +8,7 @@ from training.common.dataset_training_deploy_pipeline import (
 )
 from google_cloud_pipeline_components import aiplatform as gcc_aip
 from typing import Callable
-from kfp.v2.dsl import Dataset
+from kfp.v2.dsl import component, Dataset
 from typing import Optional
 
 
@@ -38,7 +38,8 @@ class AutoMLImageManagedDatasetPipeline(DatasetTrainingDeployPipeline):
         name: str,
         managed_dataset: managed_dataset_pipeline.ManagedDataset,
         training_info: AutoMLImageTrainingInfo,
-        metric_key_for_comparison: Optional[str] = None,
+        metric_key_for_comparison: str,
+        is_metric_greater_better: bool = True,
         deploy_info: Optional[DeployInfo] = None,
         export_info: Optional[ExportInfo] = None,
     ):
@@ -46,11 +47,39 @@ class AutoMLImageManagedDatasetPipeline(DatasetTrainingDeployPipeline):
             name=name,
             managed_dataset=managed_dataset,
             metric_key_for_comparison=metric_key_for_comparison,
+            is_metric_greater_better=is_metric_greater_better,
             deploy_info=deploy_info,
             export_info=export_info,
         )
 
         self.training_info = training_info
+
+    def create_get_metric_op(
+        self, project: str, pipeline_root: str, metric_name: str
+    ) -> Optional[Callable]:
+        # Get metric from test results
+        return self.create_get_generic_metric_op(
+            project=project,
+            metric_name=metric_name,
+        )
+
+    def create_get_incumbent_metric_op(
+        self, project: str, pipeline_root: str, metric_name: str
+    ) -> Optional[Callable]:
+        # TODO: Inject actual metrics_uri
+        return self.create_get_generic_metric_op(
+            project=project,
+            metric_name=metric_name,
+        )
+
+    def create_get_generic_metric_op(
+        self, project: str, metric_name: str
+    ) -> Optional[Callable]:
+        @component()
+        def get_metric_op(project: str, metric_name: str) -> float:
+            return 0
+
+        return get_metric_op(project=project, metric_name=metric_name)
 
     def create_training_op(
         self, project: str, pipeline_root: str, dataset: Dataset

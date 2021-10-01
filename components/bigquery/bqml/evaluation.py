@@ -23,6 +23,7 @@ def bqml_create_evaluation_op(
     query_statement: Optional[str] = None,
     table_name: Optional[str] = None,
     thresholds: Optional[float] = None,
+    encryption_spec_key_name: Optional[str] = None,
 ) -> NamedTuple("Outputs", [("gcp_resources", str)]):
     """Get the evaluation curve
 
@@ -66,6 +67,7 @@ def bqml_create_evaluation_op(
         table_name: Optional[str],
         query_statement: Optional[str],
         thresholds: List[float],
+        encryption_spec_key_name: Optional[str],
     ) -> GcpResources:
         query = build_query(
             action_name="EVALUATE",
@@ -77,7 +79,14 @@ def bqml_create_evaluation_op(
 
         client = bigquery.Client(project=project, location=location)
 
-        query_job = client.query(query)  # API request
+        job_config = bigquery.QueryJobConfig()
+        if encryption_spec_key_name:
+            encryption_config = bigquery.EncryptionConfiguration(
+                kms_key_name=encryption_spec_key_name
+            )
+            job_config.destination_encryption_configuration = encryption_config
+
+        query_job = client.query(query, job_config=job_config)  # API request
 
         df = query_job.to_dataframe()  # Waits for query to finish
 
@@ -102,6 +111,7 @@ def bqml_create_evaluation_op(
         table_name=table_name,
         query_statement=query_statement,
         thresholds=thresholds,
+        encryption_spec_key_name=encryption_spec_key_name,
     )
 
     query_job_resources_serialized = json_format.MessageToJson(query_job_resources)
@@ -127,6 +137,7 @@ def bqml_create_confusion_matrix(
     query_statement: Optional[str] = None,
     table_name: Optional[str] = None,
     thresholds: Optional[float] = None,
+    encryption_spec_key_name: Optional[str] = None,
 ) -> NamedTuple("Outputs", [("gcp_resources", str)]):
     """Get the confusion matrix
 
@@ -170,6 +181,7 @@ def bqml_create_confusion_matrix(
         table_name: Optional[str],
         query_statement: Optional[str],
         thresholds: List[float],
+        encryption_spec_key_name: Optional[str],
     ) -> GcpResources:
         query = build_query(
             action_name="CONFUSION_MATRIX",
@@ -180,6 +192,14 @@ def bqml_create_confusion_matrix(
         )
 
         client = bigquery.Client(project=project, location=location)
+
+        job_config = bigquery.QueryJobConfig()
+
+        if encryption_spec_key_name:
+            encryption_config = bigquery.EncryptionConfiguration(
+                kms_key_name=encryption_spec_key_name
+            )
+            job_config.destination_encryption_configuration = encryption_config
 
         query_job = client.query(query)  # API request
 
@@ -209,6 +229,7 @@ def bqml_create_confusion_matrix(
         table_name=table_name,
         query_statement=query_statement,
         thresholds=thresholds,
+        encryption_spec_key_name=encryption_spec_key_name,
     )
 
     query_job_resources_serialized = json_format.MessageToJson(query_job_resources)
@@ -287,6 +308,13 @@ def bqml_create_roc_curve(
         )
 
         client = bigquery.Client(project=project, location=location)
+
+        job_config = bigquery.QueryJobConfig()
+        if encryption_spec_key_name:
+            encryption_config = bigquery.EncryptionConfiguration(
+                kms_key_name=encryption_spec_key_name
+            )
+            job_config.destination_encryption_configuration = encryption_config
 
         query_job = client.query(query)  # API request
 

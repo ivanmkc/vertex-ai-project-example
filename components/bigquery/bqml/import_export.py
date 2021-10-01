@@ -14,6 +14,7 @@ def bqml_import_model(
     location: str,
     model_source_path: str,
     should_replace: bool,
+    encryption_spec_key_name: Optional[str] = None,
 ) -> NamedTuple("Outputs", [("gcp_resources", str), ("model_source_path", str)]):
     """Import model
 
@@ -42,13 +43,19 @@ def bqml_import_model(
 
     client = bigquery.Client(project=project, location=location)
 
-    query_job = client.query(query)
+    job_config = bigquery.QueryJobConfig()
+    if encryption_spec_key_name:
+        encryption_config = bigquery.EncryptionConfiguration(
+            encryption_spec_key_name=encryption_spec_key_name
+        )
+        job_config.destination_encryption_configuration = encryption_config
+
+    query_job = client.query(query, job_config=job_config)
     _ = query_job.result()
 
     # Retrieve model name and model
     table: bigquery.table.TableReference = query_job.ddl_target_table
     model_name = f"{table.project}.{table.dataset_id}.{table.table_id}"
-    # model = client.get_model(model_name)
 
     # Instantiate GCPResources Proto
     query_job_resources = GcpResources()
@@ -78,7 +85,8 @@ def bqml_export_model(
     location: str,
     model: str,  # TODO: Change to Input[BQMLModel
     model_destination_path: str,
-    trial_id: Optional[str],
+    trial_id: Optional[str] = None,
+    encryption_spec_key_name: Optional[str] = None,
 ) -> NamedTuple("Outputs", [("gcp_resources", str), ("model_destination_path", str)]):
     """Export model
 
@@ -110,7 +118,14 @@ def bqml_export_model(
 
     client = bigquery.Client(project=project, location=location)
 
-    query_job = client.query(query)
+    job_config = bigquery.QueryJobConfig()
+    if encryption_spec_key_name:
+        encryption_config = bigquery.EncryptionConfiguration(
+            encryption_spec_key_name=encryption_spec_key_name
+        )
+        job_config.destination_encryption_configuration = encryption_config
+
+    query_job = client.query(query, job_config=job_config)
     _ = query_job.result()  # Waits for query to finish
 
     # Instantiate GCPResources Proto

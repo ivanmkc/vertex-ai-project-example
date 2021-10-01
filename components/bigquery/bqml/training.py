@@ -8,7 +8,7 @@ from kfp.v2.dsl import (
     Metrics,
 )
 from google.cloud.bigquery import Model
-from typing import NamedTuple
+from typing import NamedTuple, Optional
 
 
 @component(
@@ -21,9 +21,9 @@ def bqml_create_model_op(
     project: str,
     location: str,
     query: str,
-    #    TODO: CMEK
     metrics: Output[Metrics],
     classification_metrics: Output[ClassificationMetrics],
+    encryption_spec_key_name: Optional[str] = None,
 ) -> NamedTuple("Outputs", [("gcp_resources", str), ("model", str)]):
 
     """Create a BQML model
@@ -42,7 +42,14 @@ def bqml_create_model_op(
     client = bigquery.Client(project=project, location=location)
 
     # TODO: Add labels: https://cloud.google.com/bigquery/docs/adding-labels#job-label
-    query_job = client.query(query)  # API request
+    job_config = bigquery.QueryJobConfig()
+    if encryption_spec_key_name:
+        encryption_config = bigquery.EncryptionConfiguration(
+            encryption_spec_key_name=encryption_spec_key_name
+        )
+        job_config.destination_encryption_configuration = encryption_config
+
+    query_job = client.query(query, job_config=job_config)  # API request
 
     _ = query_job.result()  # Waits for query to finish
 
@@ -96,6 +103,7 @@ def bqml_create_model_op(
         table_name: Optional[str],
         query_statement: Optional[str],
         thresholds: List[float],
+        encryption_spec_key_name: Optional[str],
     ) -> GcpResources:
         query = build_query(
             action_name="EVALUATE",
@@ -107,7 +115,14 @@ def bqml_create_model_op(
 
         client = bigquery.Client(project=project, location=location)
 
-        query_job = client.query(query)  # API request
+        job_config = bigquery.QueryJobConfig()
+        if encryption_spec_key_name:
+            encryption_config = bigquery.EncryptionConfiguration(
+                kms_key_name=encryption_spec_key_name
+            )
+            job_config.destination_encryption_configuration = encryption_config
+
+        query_job = client.query(query, job_config=job_config)  # API request
 
         df = query_job.to_dataframe()  # Waits for query to finish
 
@@ -132,6 +147,7 @@ def bqml_create_model_op(
         table_name: Optional[str],
         query_statement: Optional[str],
         thresholds: List[float],
+        encryption_spec_key_name: Optional[str],
     ) -> GcpResources:
         query = build_query(
             action_name="CONFUSION_MATRIX",
@@ -143,7 +159,14 @@ def bqml_create_model_op(
 
         client = bigquery.Client(project=project, location=location)
 
-        query_job = client.query(query)  # API request
+        job_config = bigquery.QueryJobConfig()
+        if encryption_spec_key_name:
+            encryption_config = bigquery.EncryptionConfiguration(
+                kms_key_name=encryption_spec_key_name
+            )
+            job_config.destination_encryption_configuration = encryption_config
+
+        query_job = client.query(query, job_config=job_config)  # API request
 
         df = query_job.to_dataframe()  # Waits for query to finish
         df = df.drop("expected_label", 1)
@@ -171,6 +194,7 @@ def bqml_create_model_op(
         table_name: Optional[str],
         query_statement: Optional[str],
         thresholds: List[float],
+        encryption_spec_key_name: Optional[str],
     ) -> GcpResources:
         query = build_query(
             action_name="ROC_CURVE",
@@ -182,7 +206,14 @@ def bqml_create_model_op(
 
         client = bigquery.Client(project=project, location=location)
 
-        query_job = client.query(query)  # API request
+        job_config = bigquery.QueryJobConfig()
+        if encryption_spec_key_name:
+            encryption_config = bigquery.EncryptionConfiguration(
+                kms_key_name=encryption_spec_key_name
+            )
+            job_config.destination_encryption_configuration = encryption_config
+
+        query_job = client.query(query, job_config=job_config)  # API request
 
         df = query_job.to_dataframe()  # Waits for query to finish
 
@@ -209,6 +240,7 @@ def bqml_create_model_op(
         table_name=None,
         query_statement=None,
         thresholds=[],
+        encryption_spec_key_name=encryption_spec_key_name,
     )
 
     if get_is_classification(model=model):
@@ -218,6 +250,7 @@ def bqml_create_model_op(
             table_name=None,
             query_statement=None,
             thresholds=[],
+            encryption_spec_key_name=encryption_spec_key_name,
         )
 
         # Log roc curve
@@ -226,6 +259,7 @@ def bqml_create_model_op(
             table_name=None,
             query_statement=None,
             thresholds=[],
+            encryption_spec_key_name=encryption_spec_key_name,
         )
 
     # Instantiate GCPResources Proto

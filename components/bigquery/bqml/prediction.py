@@ -19,6 +19,7 @@ def bqml_predict(
     threshold: Optional[float] = None,
     keep_original_columns: Optional[bool] = None,
     destination_table_id: Optional[str] = None,
+    encryption_spec_key_name: Optional[str] = None,
 ) -> NamedTuple("Outputs", [("gcp_resources", str), ("destination_table_id", str)]):
     """Get prediction
 
@@ -78,9 +79,15 @@ def bqml_predict(
 
     client = bigquery.Client(project=project, location=location)
 
-    job_config = None
+    job_config = bigquery.QueryJobConfig()
+    if encryption_spec_key_name:
+        encryption_config = bigquery.EncryptionConfiguration(
+            encryption_spec_key_name=encryption_spec_key_name
+        )
+        job_config.destination_encryption_configuration = encryption_config
+
     if destination_table_id:
-        job_config = bigquery.QueryJobConfig(destination=destination_table_id)
+        job_config.destination = destination_table_id
 
     query_job = client.query(query, job_config=job_config)  # API request
 

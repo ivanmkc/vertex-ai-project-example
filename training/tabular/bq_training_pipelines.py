@@ -196,7 +196,7 @@ class BQQueryCustomPipeline(Pipeline):
             export_op = data_processing.export(
                 project=project,
                 location=location,
-                source_table_id=query_op.outputs["destination_table_id"],
+                source=query_op.outputs["destination_table_id"],
                 destination_uri=pipeline_root,
                 destination_format=self.export_format,
             )
@@ -258,7 +258,7 @@ class BQMLExportToVertexAI(Pipeline):
                 project=project,
                 location=location,
                 model=create_model_op.outputs["model"],
-                model_destination=f"{pipeline_root}/exported_model",
+                model_destination_path=f"{pipeline_root}/exported_model",
             )
 
             import_op = gcc_aip.ModelUploadOp(
@@ -266,7 +266,7 @@ class BQMLExportToVertexAI(Pipeline):
                 location=location,
                 display_name=self.name,
                 serving_container_image_uri="tensorflow/serving",
-                artifact_uri=export_op.outputs["model_destination"],
+                artifact_uri=export_op.outputs["model_destination_path"],
             )
 
         return pipeline

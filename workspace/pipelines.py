@@ -9,6 +9,10 @@ from training.tabular.bq_training_pipelines import (
     BQQueryCustomPipeline,
     BQMLExportToVertexAI,
 )
+from training.image.automl_image_training_pipeline import (
+    AutoMLImageTrainingInfo,
+    AutoMLImageManagedDatasetPipeline,
+)
 from training.common.custom_python_package_training_pipeline import (
     CustomPythonPackageTrainingInfo,
     CustomPythonPackageManagedDatasetPipeline,
@@ -34,31 +38,33 @@ DEPLOY_COMPUTE = "n1-standard-4"
 
 class pipelines:
     class classification:
-        # automl_pipeline = AutoMLImageManagedDatasetPipeline(
-        #     name="image-classification-automl",
-        #     managed_dataset=datasets.classification.flowers,
-        #     training_info=AutoMLImageTrainingInfo(
-        #         prediction_type="classification",
-        #         model_type="CLOUD",
-        #         training_fraction_split=0.6,
-        #         validation_fraction_split=0.2,
-        #         test_fraction_split=0.2,
-        #         budget_milli_node_hours=8000,
-        #     ),
-        # )
+        flowers_automl = AutoMLImageManagedDatasetPipeline(
+            name="image-classification-automl",
+            managed_dataset=datasets.classification.flowers,
+            metric_key_for_comparison="accuracy",
+            training_info=AutoMLImageTrainingInfo(
+                prediction_type="classification",
+                model_type="CLOUD",
+                training_fraction_split=0.6,
+                validation_fraction_split=0.2,
+                test_fraction_split=0.2,
+                budget_milli_node_hours=8000,
+            ),
+        )
 
-        # automl_pipeline_car_damage = AutoMLImageManagedDatasetPipeline(
-        #     name="image-classification-automl-car-damage",
-        #     managed_dataset=datasets.classification.car_damage,
-        #     training_info=AutoMLImageTrainingInfo(
-        #         prediction_type="classification",
-        #         model_type="CLOUD",
-        #         training_fraction_split=0.6,
-        #         validation_fraction_split=0.2,
-        #         test_fraction_split=0.2,
-        #         budget_milli_node_hours=8000,
-        #     ),
-        # )
+        car_damage_automl = AutoMLImageManagedDatasetPipeline(
+            name="image-classification-automl-car-damage",
+            managed_dataset=datasets.classification.car_damage,
+            metric_key_for_comparison="accuracy",
+            training_info=AutoMLImageTrainingInfo(
+                prediction_type="classification",
+                model_type="CLOUD",
+                training_fraction_split=0.6,
+                validation_fraction_split=0.2,
+                test_fraction_split=0.2,
+                budget_milli_node_hours=8000,
+            ),
+        )
 
         custom_pipeline = CustomPythonPackageManagedDatasetPipeline(
             name="image-classification-custom",
@@ -85,19 +91,20 @@ class pipelines:
         )
 
     class object_detection:
-        # automl_pipeline = AutoMLImageManagedDatasetPipeline(
-        #     name="object-detection-automl",
-        #     managed_dataset=datasets.object_detection.mineral_plants,
-        #     training_info=AutoMLImageTrainingInfo(
-        #         prediction_type="object_detection",
-        #         model_type="MOBILE_TF_LOW_LATENCY_1",
-        #         budget_milli_node_hours=20000,
-        #     ),
-        #     export_info=ExportInfo(
-        #         export_format_id="tf-saved-model",
-        #         artifact_destination="gs://mineral-cloud-data/exported_models",
-        #     ),
-        # )
+        plants_automl = AutoMLImageManagedDatasetPipeline(
+            name="object-detection-automl",
+            managed_dataset=datasets.object_detection.mineral_plants,
+            metric_key_for_comparison="accuracy",
+            training_info=AutoMLImageTrainingInfo(
+                prediction_type="object_detection",
+                model_type="MOBILE_TF_LOW_LATENCY_1",
+                budget_milli_node_hours=20000,
+            ),
+            export_info=ExportInfo(
+                export_format_id="tf-saved-model",
+                artifact_destination="gs://mineral-cloud-data/exported_models",
+            ),
+        )
 
         custom_pipeline = CustomPythonPackageManagedDatasetPipeline(
             name="object-detection-custom",
@@ -129,7 +136,7 @@ class pipelines:
 
     class image_segmentation:
 
-        custom_pipeline = CustomPythonPackageManagedDatasetPipeline(
+        leaves_custom_unet = CustomPythonPackageManagedDatasetPipeline(
             name="image-segmentation-custom",
             managed_dataset=datasets.image_segmentation.mineral_leaves,
             training_script_path=(
@@ -172,7 +179,7 @@ class pipelines:
         bqml_custom_predict = BQMLTrainingPipeline(
             name="bqml-custom-predict",
             query_training="""
-                CREATE OR REPLACE MODEL `bqml_tutorial_ivan.sample_model3`
+                CREATE OR REPLACE MODEL `bqml_tutorial_ivan.sample_model1`
                 OPTIONS(model_type='logistic_reg') AS
                 SELECT
                 IF(totals.transactions IS NULL, 0, 1) AS label,
@@ -229,7 +236,7 @@ class pipelines:
         bqml_export_vertexai = BQMLExportToVertexAI(
             name="bqml-export-vertexai",
             query_training="""
-                CREATE OR REPLACE MODEL `bqml_tutorial_ivan.sample_model3`
+                CREATE OR REPLACE MODEL `bqml_tutorial_ivan.sample_model2`
                 OPTIONS(model_type='logistic_reg') AS
                 SELECT
                 IF(totals.transactions IS NULL, 0, 1) AS label,

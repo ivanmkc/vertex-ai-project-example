@@ -9,15 +9,15 @@ pipeline_root = "{}/pipeline_root".format(BUCKET_NAME)
 
 # TODO: Run in parallel
 for pipeline in [
-    # pipelines.tabular.bqml_custom_predict,
+    pipelines.tabular.bqml_custom_predict,
     pipelines.tabular.bq_automl,
-    # pipelines.tabular.bq_custom,
-    # pipelines.tabular.bqml_export_vertexai,
+    # pipelines.tabular.bq_custom, # Blocked by b/201455581
+    pipelines.tabular.bqml_export_vertexai,
 ]:
     print(f"Running pipeline: {pipeline.name}")
     util.run_pipeline(
         project_id="python-docs-samples-tests",
-        location="us-central1",
+        location="us",
         pipeline_root=pipeline_root,
         pipeline=pipeline,
     )

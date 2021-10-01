@@ -19,8 +19,9 @@ pipeline_root = "{}/pipeline_root".format(BUCKET_NAME)
 for pipeline in [
     # pipelines.classification.custom_pipeline,
     # pipelines.object_detection.custom_pipeline,
-    pipelines.image_segmentation.custom_pipeline,
-    # pipelines.object_detection.custom_pipeline,
+    pipelines.classification.flowers_automl,
+    pipelines.object_detection.plants_automl,
+    pipelines.image_segmentation.leaves_custom_unet,
 ]:
     print(f"Running pipeline: {pipeline.name}")
     util.run_pipeline(
