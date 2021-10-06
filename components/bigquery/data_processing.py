@@ -30,9 +30,10 @@ def bq_query(
 
     client = bigquery.Client(project=project, location=location)
 
-    job_config = None
+    job_config = bigquery.QueryJobConfig()
+    job_config.labels = { "kfp_runner": "bqml" } 
     if destination_table_id:
-        job_config = bigquery.QueryJobConfig(destination=destination_table_id)
+        job_config.destination=destination_table_id        
 
     query_job = client.query(query, job_config=job_config)  # API request
     query_job.result()  # Waits for query to finish

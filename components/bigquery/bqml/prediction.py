@@ -80,6 +80,8 @@ def bqml_predict(
     client = bigquery.Client(project=project, location=location)
 
     job_config = bigquery.QueryJobConfig()
+    job_config.labels = { "kfp_runner": "bqml" }
+    
     if encryption_spec_key_name:
         encryption_config = bigquery.EncryptionConfiguration(
             encryption_spec_key_name=encryption_spec_key_name

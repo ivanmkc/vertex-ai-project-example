@@ -80,6 +80,8 @@ def bqml_create_evaluation_op(
         client = bigquery.Client(project=project, location=location)
 
         job_config = bigquery.QueryJobConfig()
+        job_config.labels = { "kfp_runner": "bqml" }
+        
         if encryption_spec_key_name:
             encryption_config = bigquery.EncryptionConfiguration(
                 kms_key_name=encryption_spec_key_name
@@ -194,6 +196,7 @@ def bqml_create_confusion_matrix(
         client = bigquery.Client(project=project, location=location)
 
         job_config = bigquery.QueryJobConfig()
+        job_config.labels = { "kfp_runner": "bqml" }
 
         if encryption_spec_key_name:
             encryption_config = bigquery.EncryptionConfiguration(
@@ -255,6 +258,7 @@ def bqml_create_roc_curve(
     query_statement: Optional[str] = None,
     table_name: Optional[str] = None,
     thresholds: Optional[float] = None,
+    encryption_spec_key_name: Optional[str] = None,
 ) -> NamedTuple("Outputs", [("gcp_resources", str)]):
     """Get the ROC curve
 
@@ -298,6 +302,7 @@ def bqml_create_roc_curve(
         table_name: Optional[str],
         query_statement: Optional[str],
         thresholds: List[float],
+        encryption_spec_key_name: Optional[str],
     ) -> GcpResources:
         query = build_query(
             action_name="ROC_CURVE",
@@ -310,6 +315,8 @@ def bqml_create_roc_curve(
         client = bigquery.Client(project=project, location=location)
 
         job_config = bigquery.QueryJobConfig()
+        job_config.labels = { "kfp_runner": "bqml" }
+
         if encryption_spec_key_name:
             encryption_config = bigquery.EncryptionConfiguration(
                 kms_key_name=encryption_spec_key_name
@@ -343,6 +350,7 @@ def bqml_create_roc_curve(
         table_name=table_name,
         query_statement=query_statement,
         thresholds=thresholds,
+        encryption_spec_key_name=encryption_spec_key_name,
     )
 
     query_job_resources_serialized = json_format.MessageToJson(query_job_resources)

@@ -43,6 +43,8 @@ def bqml_create_model_op(
 
     # TODO: Add labels: https://cloud.google.com/bigquery/docs/adding-labels#job-label
     job_config = bigquery.QueryJobConfig()
+    job_config.labels = { "kfp_runner": "bqml" }
+
     if encryption_spec_key_name:
         encryption_config = bigquery.EncryptionConfiguration(
             encryption_spec_key_name=encryption_spec_key_name
@@ -116,6 +118,8 @@ def bqml_create_model_op(
         client = bigquery.Client(project=project, location=location)
 
         job_config = bigquery.QueryJobConfig()
+        job_config.labels = { "kfp_runner": "bqml" }
+
         if encryption_spec_key_name:
             encryption_config = bigquery.EncryptionConfiguration(
                 kms_key_name=encryption_spec_key_name
@@ -160,6 +164,8 @@ def bqml_create_model_op(
         client = bigquery.Client(project=project, location=location)
 
         job_config = bigquery.QueryJobConfig()
+        job_config.labels = { "kfp_runner": "bqml" }
+
         if encryption_spec_key_name:
             encryption_config = bigquery.EncryptionConfiguration(
                 kms_key_name=encryption_spec_key_name
@@ -207,6 +213,8 @@ def bqml_create_model_op(
         client = bigquery.Client(project=project, location=location)
 
         job_config = bigquery.QueryJobConfig()
+        job_config.labels = { "kfp_runner": "bqml" }
+        
         if encryption_spec_key_name:
             encryption_config = bigquery.EncryptionConfiguration(
                 kms_key_name=encryption_spec_key_name
