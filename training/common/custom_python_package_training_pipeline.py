@@ -75,7 +75,7 @@ class CustomPythonPackageManagedDatasetPipeline(DatasetTrainingDeployPipeline):
         training_script_path: str,
         requirements: List[str],
         training_info: CustomPythonPackageTrainingInfo,
-        metric_key_for_comparison: Optional[str] = None,
+        metric_key_for_comparison: str,
         is_metric_greater_better: bool = True,
         deploy_info: Optional[DeployInfo] = None,
         export_info: Optional[ExportInfo] = None,

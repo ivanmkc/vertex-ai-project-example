@@ -17,10 +17,9 @@ pipeline_root = "{}/pipeline_root".format(BUCKET_NAME)
 
 # TODO: Run in parallel
 for pipeline in [
-    # pipelines.classification.custom_pipeline,
+    pipelines.classification.custom_pipeline,
     # pipelines.object_detection.custom_pipeline,
-    pipelines.image_segmentation.custom_pipeline,
-    # pipelines.object_detection.custom_pipeline,
+    # pipelines.image_segmentation.custom_pipeline,
 ]:
     print(f"Running pipeline: {pipeline.name}")
     util.run_pipeline(

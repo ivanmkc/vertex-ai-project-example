@@ -189,7 +189,7 @@ class DatasetTrainingDeployPipeline(managed_dataset_pipeline.ManagedDatasetPipel
         self,
         name: str,
         managed_dataset: managed_dataset_pipeline.ManagedDataset,
-        metric_key_for_comparison: Optional[str],
+        metric_key_for_comparison: str,
         is_metric_greater_better: bool,
         deploy_info: Optional[DeployInfo],
         export_info: Optional[ExportInfo],

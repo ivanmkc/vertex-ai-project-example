@@ -72,10 +72,15 @@ class pipelines:
                 accelerator_type=TRAIN_GPU.name,
                 accelerator_count=TRAIN_NGPU,
             ),
+            metric_key_for_comparison="accuracy",
             deploy_info=DeployInfo(
                 machine_type=DEPLOY_COMPUTE,
                 accelerator_count=1,
                 accelerator_type="NVIDIA_TESLA_K80",
+            ),
+            export_info=ExportInfo(
+                export_format_id="custom-trained",
+                artifact_destination="gs://mineral-cloud-data/exported_models",
             ),
         )
 
@@ -111,6 +116,7 @@ class pipelines:
                 accelerator_type=TRAIN_GPU.name,
                 accelerator_count=TRAIN_NGPU,
             ),
+            metric_key_for_comparison="accuracy",
             deploy_info=DeployInfo(
                 machine_type=DEPLOY_COMPUTE,
                 accelerator_count=1,
