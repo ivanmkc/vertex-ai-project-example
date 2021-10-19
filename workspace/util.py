@@ -18,12 +18,12 @@ def generate_pipeline_job_id(pipeline_name: str) -> str:
     )
 
 
-def run_pipeline(
+def create_pipeline_job(
     project_id: str,
     location: str,
     pipeline_root: str,
     pipeline: Pipeline,
-):
+) -> aiplatform.PipelineJob:
     pipeline_run_name = generate_pipeline_job_id(pipeline.name)
 
     compiler.Compiler().compile(
@@ -44,4 +44,4 @@ def run_pipeline(
         # parameter_values={"project": project_id, "display_name": pipeline.name},
     )
 
-    job.run(sync=True)
+    return job

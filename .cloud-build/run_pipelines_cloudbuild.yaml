@@ -13,4 +13,5 @@ steps:
     - 'PYTHONPATH=/workspace/'
     - 'GCP_PROJECT_ID=$PROJECT_ID'
     - 'GCP_BUCKET_NAME=${_GCP_BUCKET_NAME}'
+    - 'GCP_REGION=${_GCP_REGION}'
 timeout: 86400s

@@ -7,8 +7,11 @@ from google.cloud import aiplatform
 
 class datasets:
     class classification:
-        flowers = ExistingManagedDataset(
-            dataset_uri="aiplatform://v1/projects/1012616486416/locations/us-central1/datasets/7601275726536376320"
+        flowers = NewImageDataset(
+            display_name="flowers",
+            gcs_source="gs://cloud-samples-data/vision/automl_classification/flowers/all_data_v2.csv",
+            import_schema_uri=aiplatform.schema.dataset.ioformat.image.single_label_classification,
+            data_item_labels=None,
         )
 
         car_damage = NewImageDataset(

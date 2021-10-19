@@ -43,6 +43,30 @@ def parse_args():
         type=str2bool,
         help="test run the training application, i.e. 1 epoch for training using sample dataset",
     )
+    parser.add_argument(
+        "--confusion_matrix_destination_uri",
+        default=None,
+        type=str,
+        help="Destination uri for confusion matrix JSON file",
+    ),
+    parser.add_argument(
+        "--classification_report_destination_uri",
+        default=None,
+        type=str,
+        help="Destination uri for classification report JSON file",
+    ),
+    parser.add_argument(
+        "--model_history_destination_uri",
+        default=None,
+        type=str,
+        help="Destination uri for model history JSON file",
+    ),
+    parser.add_argument(
+        "--model_history_test_destination_uri",
+        default=None,
+        type=str,
+        help="Destination uri for model history for test JSON file",
+    ),
     parser.add_argument("--model-version", default=1, type=int, help="model version")
     parser.add_argument(
         "--lr", dest="lr", default=0.01, type=float, help="Learning rate."

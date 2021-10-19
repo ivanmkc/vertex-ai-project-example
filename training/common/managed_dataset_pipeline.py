@@ -9,7 +9,7 @@ from kfp.v2.dsl import Dataset, importer
 
 class ManagedDataset(abc.ABC):
     @abc.abstractmethod
-    def as_kfp_op(self, project: str) -> Callable:
+    def as_kfp_op(self, project: str, location: str) -> Callable:
         pass
 
 
@@ -17,7 +17,7 @@ class ManagedDataset(abc.ABC):
 class ExistingManagedDataset(ManagedDataset):
     dataset_uri: str
 
-    def as_kfp_op(self, project: str) -> Callable:
+    def as_kfp_op(self, project: str, location: str) -> Callable:
         return importer(
             artifact_uri=self.dataset_uri,
             artifact_class=Dataset,
@@ -32,13 +32,14 @@ class NewImageDataset(ManagedDataset):
     import_schema_uri: Optional[str]
     data_item_labels: Optional[dict]
 
-    def as_kfp_op(self, project: str) -> Callable:
+    def as_kfp_op(self, project: str, location: str) -> Callable:
         return gcc_aip.ImageDatasetCreateOp(
             display_name=self.display_name,
             gcs_source=self.gcs_source,
             import_schema_uri=self.import_schema_uri,
             data_item_labels=self.data_item_labels,
             project=project,
+            location=location,
         )
 
 
@@ -50,7 +51,7 @@ class NewTabularDataset(ManagedDataset):
     import_schema_uri: Optional[str]
     data_item_labels: Optional[dict]
 
-    def as_kfp_op(self, project: str) -> Callable:
+    def as_kfp_op(self, project: str, location: str) -> Callable:
         return gcc_aip.TabularDatasetCreateOp(
             display_name=self.display_name,
             gcs_source=self.gcs_source,
@@ -58,6 +59,7 @@ class NewTabularDataset(ManagedDataset):
             import_schema_uri=self.import_schema_uri,
             data_item_labels=self.data_item_labels,
             project=project,
+            location=location,
         )
 
 

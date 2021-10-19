@@ -15,6 +15,7 @@ from kfp.v2.dsl import (
     Output,
     OutputPath,
     component,
+    importer,
 )
 
 from google.cloud.aiplatform import utils
@@ -219,7 +220,12 @@ class CustomPythonPackageManagedDatasetPipeline(DatasetTrainingDeployPipeline):
         return f"{pipeline_root}/model_history_test.json"
 
     def create_get_metric_op(
-        self, project: str, pipeline_root: str, metric_name: str
+        self,
+        project: str,
+        location: str,
+        pipeline_root: str,
+        model: Model,
+        metric_name: str,
     ) -> Optional[Callable]:
         # Get metric from test results
         return self.create_get_generic_metric_op(
@@ -229,15 +235,22 @@ class CustomPythonPackageManagedDatasetPipeline(DatasetTrainingDeployPipeline):
         )
 
     def create_get_incumbent_metric_op(
-        self, project: str, pipeline_root: str, metric_name: str
+        self, project: str, pipeline_root: str, model: Model, metric_name: str
     ) -> Optional[Callable]:
-        # TODO: Inject actual metrics_uri
-        return self.create_get_generic_metric_op(
+        @component()
+        def get_incumbent_metric_op(
+            project: str,
+            pipeline_root: str,
+            model: Input[Model],
+            metric_name: str,
+        ) -> float:
+            return 0.0
+
+        return get_incumbent_metric_op(
             project=project,
+            pipeline_root=pipeline_root,
+            model=model,
             metric_name=metric_name,
-            metrics_uri=self._get_model_history_test_uri(
-                pipeline_root=pipeline_root
-            ),  # Pass None
         )
 
     def create_get_generic_metric_op(
@@ -374,6 +387,13 @@ class CustomPythonPackageManagedDatasetPipeline(DatasetTrainingDeployPipeline):
         package_gcs_uri: str,
         python_module_name: str,
     ) -> Callable:
+        # # TODO: Remove this
+        # return importer(
+        #     artifact_uri="aiplatform://v1/projects/386521456919/locations/us-central1/models/606991991183507456",
+        #     artifact_class=Model,
+        #     reimport=False,
+        # )
+
         training_args = self.training_info.args
 
         # TODO: Check if training task supports this arg

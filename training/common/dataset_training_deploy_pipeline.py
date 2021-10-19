@@ -4,8 +4,7 @@ import dataclasses
 
 from google_cloud_pipeline_components import aiplatform as gcc_aip
 import kfp
-from kfp.dsl.io_types import Model
-from kfp.v2.dsl import component, importer, Condition, Dataset, Input
+from kfp.v2.dsl import component, importer, Condition, Dataset, Model
 import training.common.managed_dataset_pipeline as managed_dataset_pipeline
 from google.cloud.aiplatform import explain
 
@@ -206,13 +205,18 @@ class DatasetTrainingDeployPipeline(managed_dataset_pipeline.ManagedDatasetPipel
 
     @abc.abstractmethod
     def create_get_metric_op(
-        self, project: str, pipeline_root: str, metric_name: str
+        self,
+        project: str,
+        location: str,
+        pipeline_root: str,
+        model: Model,
+        metric_name: str,
     ) -> Optional[Callable]:
         pass
 
     @abc.abstractmethod
     def create_get_incumbent_metric_op(
-        self, project: str, pipeline_root: str, metric_name: str
+        self, project: str, pipeline_root: str, model: Model, metric_name: str
     ) -> Optional[Callable]:
         pass
 
@@ -223,7 +227,7 @@ class DatasetTrainingDeployPipeline(managed_dataset_pipeline.ManagedDatasetPipel
         pipeline_root: str,
         metric: float,
         incumbent_metric: float,
-    ) -> Callable:
+    ) -> Optional[Callable]:
         @component(
             packages_to_install=[
                 "google-cloud-storage",
@@ -283,58 +287,79 @@ class DatasetTrainingDeployPipeline(managed_dataset_pipeline.ManagedDatasetPipel
     ) -> Callable[..., Any]:
         @kfp.dsl.pipeline(name=self.name, pipeline_root=pipeline_root)
         def pipeline():
-            dataset_op = self.managed_dataset.as_kfp_op(project=project)
+            dataset_op = self.managed_dataset.as_kfp_op(
+                project=project, location=location
+            )
 
-            # training_op = self.create_training_op(
-            #     project=project, pipeline_root=pipeline_root, dataset=dataset_op.output
-            # )
-            training_op = importer(
-                artifact_uri="aiplatform://v1/projects/386521456919/locations/us-central1/models/606991991183507456",
-                artifact_class=Model,
-                reimport=False,
+            training_op = self.create_training_op(
+                project=project, pipeline_root=pipeline_root, dataset=dataset_op.output
             )
 
             confusion_matrix_op = self.create_confusion_matrix_op(
                 project=project,
                 pipeline_root=pipeline_root,
-            ).after(training_op)
+            )
+
+            if confusion_matrix_op:
+                confusion_matrix_op = confusion_matrix_op.after(training_op)
 
             classification_report_op = self.create_classification_report_op(
                 project=project,
                 pipeline_root=pipeline_root,
-            ).after(training_op)
+            )
+
+            if classification_report_op:
+                classification_report_op = classification_report_op.after(training_op)
 
             model_history_op = self.create_model_history_op(
                 project=project,
                 pipeline_root=pipeline_root,
-            ).after(training_op)
+            )
+
+            if model_history_op:
+                model_history_op = model_history_op.after(training_op)
 
             model_history_test_op = self.create_model_history_test_op(
                 project=project,
                 pipeline_root=pipeline_root,
-            ).after(training_op)
+            )
+
+            if model_history_test_op:
+                model_history_test_op = model_history_test_op.after(training_op)
 
             get_metric_op = self.create_get_metric_op(
                 project=project,
+                location=location,
                 pipeline_root=pipeline_root,
+                model=training_op.output,
                 metric_name=self.metric_key_for_comparison,
-            ).after(training_op)
+            )
+
+            if get_metric_op:
+                get_metric_op = get_metric_op.after(training_op)
 
             get_incumbent_metric_op = self.create_get_incumbent_metric_op(
                 project=project,
                 pipeline_root=pipeline_root,
+                model=training_op.output,
                 metric_name=self.metric_key_for_comparison,
-            ).after(training_op)
-
-            pipeline_metric_comparison_op = self.create_pipeline_metric_comparison_op(
-                project=project,
-                location=location,
-                pipeline_root=pipeline_root,
-                metric=get_metric_op.output,
-                incumbent_metric=get_incumbent_metric_op.output,
             )
 
-            if self.deploy_info or self.export_info:
+            if get_incumbent_metric_op:
+                get_incumbent_metric_op = get_incumbent_metric_op.after(training_op)
+
+            if get_metric_op and get_incumbent_metric_op:
+                pipeline_metric_comparison_op = (
+                    self.create_pipeline_metric_comparison_op(
+                        project=project,
+                        location=location,
+                        pipeline_root=pipeline_root,
+                        metric=get_metric_op.output,
+                        incumbent_metric=get_incumbent_metric_op.output,
+                    )
+                )
+
+            if pipeline_metric_comparison_op and self.deploy_info or self.export_info:
                 with Condition(
                     pipeline_metric_comparison_op.output == "true",
                     name="post_train_decision",
