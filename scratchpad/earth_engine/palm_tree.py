@@ -7,13 +7,14 @@ import json
 import sys
 
 import distinctipy
+import uuid
 
 TRAINING_BASE = "labels_"
 FOLDER = "high-res-patches"
 STAGING_BUCKET = "ivanmkc-palm-data-2"
 
-pattern = "gs://" + STAGING_BUCKET + "/" + FOLDER + "/" + TRAINING_BASE + "*"
-# pattern = "gs://ivanmkc-palm-data/high-res-patches/labels_0.tfrecord.gz"
+# pattern = "gs://" + STAGING_BUCKET + "/" + FOLDER + "/" + TRAINING_BASE + "*"
+pattern = "gs://ivanmkc-palm-data-2/high-res-patches/labels_0.tfrecord.gz"
 
 number_to_label_map = {
     0: "no data",
@@ -105,7 +106,7 @@ def convert_record_to_list_of_patches(x) -> List[Tuple[np.ndarray, np.ndarray]]:
     return [to_tuple(x) for x in flatten_patches(parse_tfrecord(x)).as_numpy_iterator()]
 
 
-output_gcs_blob_folder = "image_and_masks"
+output_gcs_blob_folder = f"image_and_masks/{uuid.uuid4()}"
 
 
 def convert_image_and_mask_to_managed_dataset_record(image_and_mask) -> Dict:
@@ -177,11 +178,11 @@ def convert_image_and_mask_to_managed_dataset_record(image_and_mask) -> Dict:
 
         # Upload image to GCS
         output_gcs_blob_file = os.path.join(output_gcs_blob_folder, f"{name}.png")
-        upload_blob(output_gcs_bucket, temp_filename, output_gcs_blob_file)
+        # upload_blob(output_gcs_bucket, temp_filename, output_gcs_blob_file)
 
         # Upload mask to GCS
         mask_gcs_blob_file = os.path.join(output_gcs_blob_folder, f"{name}_mask.png")
-        upload_blob(output_gcs_bucket, mask_filename, mask_gcs_blob_file)
+        # upload_blob(output_gcs_bucket, mask_filename, mask_gcs_blob_file)
 
         # Check for duplicates
         # image_checksum = hashlib.md5(image.tobytes()).hexdigest()
@@ -205,6 +206,16 @@ def convert_image_and_mask_to_managed_dataset_record(image_and_mask) -> Dict:
                 if number in numbers_used
             ],
         }
+
+        unique_colors = (
+            np.unique(
+                image_mask_matrix_rgb.reshape(-1, image_mask_matrix_rgb.shape[2]),
+                axis=0,
+            )
+            / 255
+        )
+
+        print(unique_colors)
 
         return {
             "imageGcsUri": f"gs://{os.path.join(output_gcs_bucket, output_gcs_blob_file)}",
